@@ -47,8 +47,10 @@
               _setUser({ uid:u.id, name:u.name, email:u.email, phone:u.phone || '', initials:_initials(u.name), role:u.role || 'passenger', joinDate:new Date().toISOString(), provider:'email' });
               return res(_user);
             }
-            if (out?.error) throw new Error(out.error);
+            // If backend is unavailable, fall through to demo login below
+            if (out?.error && !out?._noBackend) throw new Error(out.error);
           }
+          // Demo/offline fallback — create local user from email
           const name = email.split('@')[0].replace(/[._-]/g,' ').replace(/\b\w/g,c=>c.toUpperCase());
           _setUser({ uid:'demo_'+Date.now(), name, email: email.toLowerCase(), phone:'', initials: _initials(name), role:'passenger', joinDate: new Date().toISOString(), provider:'email' });
           res(_user);
@@ -69,7 +71,7 @@
               _setUser({ uid:u.id, name:u.name, email:u.email, phone:u.phone || '', initials:_initials(u.name), role:u.role || 'passenger', joinDate:new Date().toISOString(), provider:'email' });
               return res(_user);
             }
-            if (out?.error) throw new Error(out.error);
+            if (out?.error && !out?._noBackend) throw new Error(out.error);
           }
           _setUser({ uid:'demo_'+Date.now(), name: name.trim(), email: email.toLowerCase(), phone: phone||'', initials: _initials(name), role:'passenger', joinDate: new Date().toISOString(), provider:'email' });
           res(_user);
