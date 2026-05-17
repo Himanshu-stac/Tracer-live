@@ -4,7 +4,19 @@
 // ================================================================
 
 const API_BASE = window.location.origin; // same-origin
-const DEMO_MODE = false; // Real backend mode
+let _backendAvailable = null; // null = not checked yet
+
+// ── Auto-detect if backend is reachable ──────────────────────────
+async function _checkBackend() {
+  if (_backendAvailable !== null) return _backendAvailable;
+  try {
+    const r = await fetch(API_BASE + '/api/buses', { method: 'GET', headers: { 'Accept': 'application/json' } });
+    const ct = r.headers.get('content-type') || '';
+    _backendAvailable = ct.includes('application/json');
+  } catch { _backendAvailable = false; }
+  console.log(_backendAvailable ? '🟢 Backend connected' : '🟡 No backend — demo mode');
+  return _backendAvailable;
+}
 
 // ── Auth token helpers ───────────────────────────────────────────
 const TracerAPI = {
@@ -22,23 +34,38 @@ const TracerAPI = {
              : { 'Content-Type': 'application/json' };
   },
 
+  // Safe fetch — validates JSON response, returns {error} on HTML/network failures
+  async _safeFetch(url, opts) {
+    try {
+      const r = await fetch(url, opts);
+      const ct = r.headers.get('content-type') || '';
+      if (!ct.includes('application/json')) {
+        // Server returned HTML (e.g. GitHub Pages 404) — not a real API
+        return { error: 'Backend not available', _noBackend: true };
+      }
+      return await r.json();
+    } catch (e) {
+      return { error: e.message || 'Network error', _noBackend: true };
+    }
+  },
+
   async post(path, body) {
-    const r = await fetch(API_BASE + path, { method: 'POST', headers: this.authHeaders(), body: JSON.stringify(body) });
-    return r.json();
+    return this._safeFetch(API_BASE + path, { method: 'POST', headers: this.authHeaders(), body: JSON.stringify(body) });
   },
   async get(path) {
-    const r = await fetch(API_BASE + path, { headers: this.authHeaders() });
-    return r.json();
+    return this._safeFetch(API_BASE + path, { headers: this.authHeaders() });
   },
 
   // ── Auth ──────────────────────────────────────────────────────
   async register(name, email, password, phone, role) {
     const d = await this.post('/api/auth/register', { name, email, password, phone, role: role || 'passenger' });
+    if (d._noBackend) return d; // caller will handle demo fallback
     if (d.token) this.setToken(d.token);
     return d;
   },
   async login(email, password) {
     const d = await this.post('/api/auth/login', { email, password });
+    if (d._noBackend) return d; // caller will handle demo fallback
     if (d.token) this.setToken(d.token);
     return d;
   },

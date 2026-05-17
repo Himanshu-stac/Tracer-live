@@ -73,6 +73,7 @@
 
   async function ensureDriverAccount(email, password) {
     let result = await TracerAPI.login(email, password);
+    if (result?._noBackend) return result; // let handleLogin do demo fallback
     if (result?.token) return result;
     if (String(result?.error || '').toLowerCase().includes('invalid')) {
       result = await TracerAPI.register(email.split('@')[0] || 'Driver', email, password, '', 'driver');
@@ -98,6 +99,20 @@
 
     try {
       const result = await ensureDriverAccount(email, password);
+
+      // Backend unavailable — create local demo driver session
+      if (result?._noBackend) {
+        const name = email.split('@')[0].replace(/[._-]/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+        driverUser = {
+          id: 'demo-driver-' + Date.now(), name, email,
+          role: 'driver', phone: '', busId,
+          route: route || selectedBus()?.route || 'Custom Route',
+          type: selectedBus()?.type || busType
+        };
+        onLoginSuccess();
+        return;
+      }
+
       if (result?.error) throw new Error(result.error);
       if (result.user?.role !== 'driver') {
         throw new Error('This account is not registered as a driver');
@@ -163,7 +178,7 @@
     }
 
     const started = await TracerAPI.startTrip(busId, driverUser.route);
-    if (started?.error) {
+    if (started?.error && !started?._noBackend) {
       showSnackbar(started.error);
       return;
     }
