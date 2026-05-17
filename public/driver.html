@@ -1,0 +1,317 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Tracer Live — Driver Dashboard</title>
+  <meta name="description" content="Driver dashboard for Tracer Live GPS bus tracking." />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { padding-top: var(--bar-h); max-width:100% !important; }
+    .driver-page { padding: 16px; max-width: 540px; margin: 0 auto; padding-bottom: 40px; }
+    .auth-card { background:var(--bg2); border:1px solid var(--divider); border-radius:var(--radius); box-shadow:var(--shadow-lg); overflow:hidden; margin-top:12px; }
+    .auth-banner { background:linear-gradient(135deg,#1B6B45,#27AE60 60%,#1565C0); padding:28px 24px 22px; text-align:center; }
+    .auth-banner-icon { font-size:52px; display:block; margin-bottom:8px; }
+    .auth-banner-title { font-size:22px; font-weight:800; color:#fff; }
+    .auth-banner-sub { font-size:12px; color:rgba(255,255,255,0.8); margin-top:3px; }
+    .auth-body { padding:24px; }
+    .bus-type-row { display:flex; gap:8px; margin-bottom:14px; }
+    .bus-type-opt { flex:1; padding:10px 8px; border:1.5px solid var(--divider); border-radius:var(--radius-sm); background:var(--bg2); font-family:'Outfit',sans-serif; font-size:12px; font-weight:600; cursor:pointer; text-align:center; color:var(--text-sec); transition:all 0.2s; display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .bus-type-opt span { font-size:22px; }
+    .bus-type-opt.active { border-color:#1565C0; background:rgba(21,101,192,0.06); color:#1565C0; }
+    [data-theme="dark"] .bus-type-opt.active { border-color:#2ECC71; color:#2ECC71; }
+    .bus-select-wrap { position:relative; margin-bottom:14px; }
+    .bus-select { width:100%; height:46px; border:1.5px solid var(--divider); border-radius:var(--radius-sm); padding:0 14px 0 42px; font-family:'Outfit',sans-serif; font-size:13px; font-weight:600; background:var(--bg2); color:var(--text); outline:none; cursor:pointer; appearance:none; transition:border-color 0.2s; }
+    .bus-select:focus { border-color:var(--accent); }
+    .bus-select-icon { position:absolute; left:12px; top:50%; transform:translateY(-50%); color:var(--text-hint); font-size:20px; pointer-events:none; }
+    .bus-select-arrow { position:absolute; right:12px; top:50%; transform:translateY(-50%); color:var(--text-hint); font-size:18px; pointer-events:none; }
+    .or-divider { text-align:center; font-size:11px; color:var(--text-hint); margin:8px 0; font-weight:600; }
+    #dashboard { display:none; }
+    .driver-info-bar { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--bg2); border:1px solid var(--divider); border-radius:var(--radius-sm); margin-bottom:14px; box-shadow:var(--shadow); }
+    .driver-avatar { width:46px; height:46px; border-radius:50%; background:linear-gradient(135deg,#1B6B45,#1565C0); display:flex; align-items:center; justify-content:center; font-size:18px; font-weight:800; color:#fff; flex-shrink:0; }
+    .driver-name { font-size:14px; font-weight:700; color:var(--text); }
+    .driver-busid { font-size:12px; color:var(--text-sec); margin-top:2px; }
+    .trip-timer-wrap { background:var(--bg2); border:1px solid var(--divider); border-radius:var(--radius-sm); padding:10px 16px; display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+    .trip-timer { font-size:22px; font-weight:800; font-family:monospace; color:var(--text); letter-spacing:2px; }
+    #driver-map { height:200px; border-radius:var(--radius); }
+    @media(min-width:600px){#driver-map{height:260px;}}
+    .track-control-btn { width:100%; height:58px; border:none; border-radius:var(--radius-sm); font-family:'Outfit',sans-serif; font-size:16px; font-weight:800; letter-spacing:0.1em; cursor:pointer; transition:all 0.25s; display:flex; align-items:center; justify-content:center; gap:10px; }
+    .track-control-btn.start { background:linear-gradient(135deg,#1B6B45,#27AE60); color:#fff; box-shadow:0 6px 24px rgba(27,107,69,0.35); }
+    .track-control-btn.stop  { background:linear-gradient(135deg,#C62828,#E53935); color:#fff; box-shadow:0 6px 24px rgba(198,40,40,0.35); }
+    .track-control-btn:hover { transform:translateY(-2px); }
+    .action-row { display:flex; gap:10px; margin-top:12px; }
+    .action-btn { flex:1; height:46px; border:1.5px solid var(--divider); border-radius:var(--radius-sm); background:var(--bg2); font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer; color:var(--text-sec); transition:all 0.2s; display:flex; align-items:center; justify-content:center; gap:6px; }
+    .action-btn.emergency { border-color:#C62828; color:#C62828; }
+    .action-btn.emergency:hover { background:rgba(198,40,40,0.06); }
+    .action-btn.locked { border-color:#F57C00; color:#F57C00; background:rgba(245,124,0,0.06); }
+    .accuracy-bar { height:4px; border-radius:2px; background:var(--divider); margin-top:6px; overflow:hidden; }
+    .accuracy-fill { height:100%; border-radius:2px; transition:width 0.5s; background:linear-gradient(90deg,#C62828,#27AE60); }
+    .seat-card { background:var(--bg2); border:1px solid var(--divider); border-radius:var(--radius-sm); padding:12px 16px; display:flex; align-items:center; gap:12px; margin-bottom:14px; }
+    .seat-bar { height:6px; border-radius:3px; background:var(--divider); overflow:hidden; margin-top:6px; }
+    .seat-fill { height:100%; border-radius:3px; background:linear-gradient(90deg,#27AE60,#1B6B45); transition:width 0.5s; }
+    .modal-overlay { position:fixed; inset:0; z-index:2000; background:rgba(0,0,0,0.6); backdrop-filter:blur(4px); display:none; align-items:center; justify-content:center; padding:20px; }
+    .modal-overlay.open { display:flex; }
+    .modal-card { background:var(--modal-bg); border:1px solid var(--divider); border-radius:var(--radius); max-width:400px; width:100%; box-shadow:0 20px 60px rgba(0,0,0,0.4); animation:slide-in-up 0.3s ease; }
+    .modal-header { padding:18px 20px; border-bottom:1px solid var(--divider); display:flex; align-items:center; gap:10px; }
+    .modal-body { padding:20px; }
+    .emergency-types { display:grid; grid-template-columns:1fr 1fr; gap:8px; margin-bottom:14px; }
+    .emergency-type-btn { padding:12px 8px; border:1.5px solid var(--divider); border-radius:var(--radius-sm); background:var(--bg2); font-family:'Outfit',sans-serif; font-size:12px; font-weight:700; cursor:pointer; text-align:center; color:var(--text-sec); transition:all 0.2s; display:flex; flex-direction:column; align-items:center; gap:4px; }
+    .emergency-type-btn .em-icon { font-size:24px; }
+    .emergency-type-btn.selected { border-color:#C62828; background:rgba(198,40,40,0.08); color:#C62828; }
+    .modal-footer { padding:16px 20px; border-top:1px solid var(--divider); display:flex; gap:10px; }
+    .modal-cancel { flex:1; height:44px; border:1.5px solid var(--divider); border-radius:var(--radius-sm); background:transparent; font-family:'Outfit',sans-serif; font-size:14px; font-weight:700; cursor:pointer; color:var(--text-sec); }
+    .modal-send { flex:2; height:44px; border:none; border-radius:var(--radius-sm); background:linear-gradient(135deg,#C62828,#E53935); font-family:'Outfit',sans-serif; font-size:14px; font-weight:800; cursor:pointer; color:#fff; display:flex; align-items:center; justify-content:center; gap:8px; }
+    @keyframes slide-in-up { from{transform:translateY(30px);opacity:0;} to{transform:translateY(0);opacity:1;} }
+    @media (min-width: 900px) {
+      .driver-page { max-width: 1120px; }
+      #dashboard { display:none; grid-template-columns: minmax(320px, 420px) minmax(0, 1fr); gap: 16px; align-items:start; }
+      #dashboard .driver-info-bar,
+      #dashboard .trip-timer-wrap,
+      #dashboard .seat-card,
+      #dashboard .tracking-bar { grid-column: 1; }
+      #dashboard .map-wrap { grid-column: 2; grid-row: 1 / span 4; margin-bottom:0 !important; }
+      #driver-map { height: min(62vh, 560px); }
+      #dashboard .stats-grid,
+      #dashboard #track-control-btn,
+      #dashboard #track-hint,
+      #dashboard .action-row { grid-column: 1 / -1; }
+      .auth-card { max-width: 620px; margin: 24px auto; }
+    }
+    @media (max-width: 430px) {
+      .driver-page { padding: 12px; }
+      .auth-body { padding: 18px; }
+      .action-row, .modal-footer { flex-direction: column; }
+      .trip-timer-wrap, .seat-card { align-items:flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <header class="top-bar">
+    <a href="index.html" class="icon-btn" style="color:var(--text-sec)"><span class="material-icons-round">arrow_back</span></a>
+    <span style="font-size:22px;">🚌</span>
+    <div style="flex:1"><div class="top-bar-title">Driver Dashboard</div></div>
+    <button class="icon-btn" id="theme-btn"><span class="material-icons-round" id="theme-icon">dark_mode</span></button>
+    <button class="icon-btn" id="logout-btn" style="display:none;" title="Logout"><span class="material-icons-round">logout</span></button>
+  </header>
+
+  <div class="driver-page">
+    <!-- AUTH PANEL -->
+    <div id="auth-panel">
+      <div class="auth-card">
+        <div class="auth-banner">
+          <span class="auth-banner-icon">🚌</span>
+          <div class="auth-banner-title">Driver Login</div>
+          <div class="auth-banner-sub">Start broadcasting your bus location live</div>
+        </div>
+        <div class="auth-body">
+          <div style="font-size:18px;font-weight:700;color:var(--text);margin-bottom:4px;">Sign In to Your Shift</div>
+          <div style="font-size:13px;color:var(--text-sec);margin-bottom:20px;">Enter credentials and select your assigned bus</div>
+
+          <div class="section-title">BUS TYPE</div>
+          <div class="bus-type-row">
+            <button class="bus-type-opt active" id="type-local" data-type="local"><span>🏙</span>Local Bus</button>
+            <button class="bus-type-opt" id="type-intercity" data-type="intercity"><span>🛣</span>Intercity</button>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">EMAIL</label>
+            <div class="form-input-icon">
+              <span class="material-icons-round">email</span>
+              <input type="text" inputmode="email" class="form-input" id="driver-email" placeholder="driver@example.com" autocomplete="email" autocapitalize="none" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">PASSWORD</label>
+            <div class="form-input-icon">
+              <span class="material-icons-round">lock</span>
+              <input type="password" class="form-input" id="driver-password" placeholder="Your password" autocomplete="current-password" />
+            </div>
+          </div>
+
+          <div class="form-group">
+            <label class="form-label">SELECT ASSIGNED BUS</label>
+            <div class="bus-select-wrap">
+              <span class="material-icons-round bus-select-icon">directions_bus</span>
+              <select class="bus-select" id="bus-select">
+                <option value="">-- Select your bus --</option>
+              </select>
+              <span class="material-icons-round bus-select-arrow">expand_more</span>
+            </div>
+          </div>
+          <div class="or-divider">— OR ENTER MANUALLY —</div>
+          <div class="form-group">
+            <label class="form-label">BUS ID (MANUAL)</label>
+            <div class="form-input-icon">
+              <span class="material-icons-round">edit</span>
+              <input type="text" class="form-input" id="driver-busid-manual" placeholder="e.g. DL-BUS-101" style="text-transform:uppercase" autocomplete="off" />
+            </div>
+          </div>
+          <div class="form-group">
+            <label class="form-label">ROUTE</label>
+            <div class="form-input-icon">
+              <span class="material-icons-round">route</span>
+              <input type="text" class="form-input" id="driver-route" placeholder="Auto-filled from bus selection" autocomplete="off" />
+            </div>
+          </div>
+
+          <button class="btn btn-primary btn-full" id="login-btn" style="margin-top:4px;">
+            <span class="material-icons-round">login</span> SIGN IN &amp; START
+          </button>
+          <p style="font-size:11px;color:var(--text-hint);text-align:center;margin-top:12px;">
+            Demo: use <strong>demo@driver.com</strong> / any password (6+ chars)
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- DASHBOARD -->
+    <div id="dashboard">
+      <div class="driver-info-bar">
+        <div class="driver-avatar" id="d-avatar">D</div>
+        <div>
+          <div class="driver-name" id="d-name">Driver</div>
+          <div class="driver-busid" id="d-busid-lbl">Bus ID: —</div>
+        </div>
+        <div style="margin-left:auto;" id="d-status-badge"></div>
+      </div>
+
+      <div class="trip-timer-wrap">
+        <span class="material-icons-round" style="color:var(--accent);font-size:22px;">timer</span>
+        <div>
+          <div style="font-size:10px;color:var(--text-hint);font-weight:600;">TRIP DURATION</div>
+          <div class="trip-timer" id="trip-timer">00:00:00</div>
+        </div>
+        <div style="margin-left:auto;text-align:right;">
+          <div style="font-size:10px;color:var(--text-hint);font-weight:600;">UPDATES SENT</div>
+          <div style="font-size:22px;font-weight:800;color:var(--text);" id="stat-updates">0</div>
+        </div>
+      </div>
+
+      <div class="seat-card">
+        <div style="font-size:28px;">💺</div>
+        <div style="flex:1;">
+          <div style="display:flex;align-items:baseline;gap:4px;">
+            <span style="font-size:24px;font-weight:800;color:var(--text);" id="stat-seats">—</span>
+            <span style="font-size:11px;color:var(--text-sec);" id="stat-seats-total">/ — seats</span>
+            <span style="font-size:12px;color:var(--text-hint);margin-left:4px;">available</span>
+          </div>
+          <div class="seat-bar"><div class="seat-fill" id="seat-fill-bar" style="width:70%"></div></div>
+        </div>
+        <div style="text-align:right;">
+          <div style="font-size:10px;color:var(--text-hint);font-weight:600;">ONBOARD</div>
+          <div style="font-size:20px;font-weight:800;color:var(--text);" id="stat-onboard">0</div>
+          <div style="font-size:10px;color:var(--text-hint);">sharing GPS</div>
+        </div>
+      </div>
+
+      <div class="tracking-bar waiting" id="tracking-bar">
+        <div class="tb-icon">📡</div>
+        <div>
+          <div class="tb-main" id="tb-main">Waiting for GPS…</div>
+          <div class="tb-sub" id="tb-sub">Getting your location</div>
+        </div>
+      </div>
+
+      <div class="map-wrap" style="margin-bottom:14px;">
+        <div id="driver-map"></div>
+        <div class="map-overlay-chip top-right" id="gps-chip">
+          <span class="material-icons-round" style="font-size:14px;">gps_fixed</span>
+          <span id="gps-chip-txt">Acquiring…</span>
+        </div>
+      </div>
+
+      <div class="stats-grid" style="margin-bottom:14px;">
+        <div class="stat-cell">
+          <div class="stat-icon">🚀</div>
+          <div class="stat-val" id="stat-speed">—</div>
+          <div class="stat-unit">km/h</div>
+          <div class="stat-lbl">Speed</div>
+          <div class="accuracy-bar"><div class="accuracy-fill" id="speed-bar" style="width:0%"></div></div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-icon">🎯</div>
+          <div class="stat-val" id="stat-acc">—</div>
+          <div class="stat-unit">metres</div>
+          <div class="stat-lbl">Accuracy</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-icon">🧭</div>
+          <div class="stat-val" id="stat-heading">—</div>
+          <div class="stat-unit">°</div>
+          <div class="stat-lbl">Heading</div>
+        </div>
+        <div class="stat-cell">
+          <div class="stat-icon">👥</div>
+          <div class="stat-val" id="stat-sharing">0</div>
+          <div class="stat-unit">active</div>
+          <div class="stat-lbl">Sharing GPS</div>
+        </div>
+      </div>
+
+      <button class="track-control-btn start" id="track-control-btn">
+        <span class="material-icons-round">play_arrow</span> START TRACKING
+      </button>
+      <p id="track-hint" style="text-align:center;font-size:11px;color:var(--text-hint);margin-top:8px;">
+        Press to broadcast your live location to passengers
+      </p>
+
+      <div class="action-row">
+        <button class="action-btn emergency" id="emergency-btn">
+          <span class="material-icons-round" style="font-size:18px;">emergency</span> EMERGENCY
+        </button>
+        <button class="action-btn" id="route-lock-btn">
+          <span class="material-icons-round" style="font-size:18px;">lock_open</span> LOCK ROUTE
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="snackbar" id="snackbar"></div>
+
+  <!-- Emergency Modal -->
+  <div class="modal-overlay" id="emergency-modal">
+    <div class="modal-card">
+      <div class="modal-header">
+        <span style="font-size:28px;">🚨</span>
+        <div style="font-size:16px;font-weight:800;">Send Emergency Alert</div>
+        <button class="icon-btn" id="emergency-cancel" style="margin-left:auto;color:var(--text-sec);">
+          <span class="material-icons-round">close</span>
+        </button>
+      </div>
+      <div class="modal-body">
+        <p style="font-size:13px;color:var(--text-sec);margin-bottom:14px;">Alert will be broadcast to all passengers tracking this bus.</p>
+        <div class="emergency-types">
+          <button class="emergency-type-btn" data-type="accident"><span class="em-icon">💥</span>Accident</button>
+          <button class="emergency-type-btn" data-type="breakdown"><span class="em-icon">🔧</span>Breakdown</button>
+          <button class="emergency-type-btn" data-type="medical"><span class="em-icon">🚑</span>Medical</button>
+          <button class="emergency-type-btn" data-type="security"><span class="em-icon">🚔</span>Security</button>
+        </div>
+        <div class="form-group" style="margin-bottom:0;">
+          <label class="form-label">NOTE (OPTIONAL)</label>
+          <textarea class="form-input" id="emergency-note" rows="2" placeholder="Describe the situation…" style="height:auto;padding:10px 14px;resize:none;"></textarea>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button class="modal-cancel" id="emergency-cancel-footer">CANCEL</button>
+        <button class="modal-send" id="emergency-send">
+          <span class="material-icons-round">send</span> SEND ALERT
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+  <script src="api.js"></script>
+  <script src="shared.js"></script>
+  <script src="driver-app.js"></script>
+  <script>
+    document.getElementById('emergency-cancel-footer').addEventListener('click', () => {
+      document.getElementById('emergency-modal').classList.remove('open');
+    });
+  </script>
+</body>
+</html>

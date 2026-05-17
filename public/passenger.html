@@ -1,0 +1,1084 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Tracer Live — Track Bus</title>
+  <link rel="stylesheet"
+    href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" />
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    /* ===== LAYOUT ===== */
+    html,
+    body {
+      height: 100%;
+      overflow: hidden;
+    }
+
+    /* Desktop: two-column */
+    .page-root {
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    /* Fixed top bar */
+    .p-topbar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      height: 56px;
+      flex-shrink: 0;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--divider);
+      box-shadow: var(--shadow);
+      z-index: 200;
+      position: relative;
+    }
+
+    [data-theme="light"] .p-topbar {
+      background: rgba(255, 255, 255, 0.98);
+    }
+
+    [data-theme="dark"] .p-topbar {
+      background: rgba(13, 32, 23, 0.98);
+    }
+
+    .p-topbar-title {
+      font-size: 16px;
+      font-weight: 800;
+      flex: 1;
+    }
+
+    .p-topbar-sub {
+      font-size: 11px;
+      color: var(--text-hint);
+    }
+
+    /* Search row */
+    .p-search-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--divider);
+      background: var(--bg);
+      flex-shrink: 0;
+    }
+
+    .p-search-input {
+      flex: 1;
+      height: 38px;
+      border: 1.5px solid var(--divider);
+      border-radius: 20px;
+      padding: 0 14px;
+      font-family: 'Outfit', sans-serif;
+      font-size: 13px;
+      font-weight: 500;
+      background: var(--bg2);
+      color: var(--text);
+      outline: none;
+      text-transform: uppercase;
+      transition: border-color 0.2s;
+    }
+
+    .p-search-input:focus {
+      border-color: var(--accent);
+    }
+
+    .p-search-input::placeholder {
+      text-transform: none;
+      color: var(--text-hint);
+    }
+
+    .p-search-btn {
+      height: 38px;
+      padding: 0 16px;
+      border: none;
+      border-radius: 20px;
+      background: var(--btn-bg);
+      color: #fff;
+      font-family: 'Outfit', sans-serif;
+      font-size: 12px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    /* Main content split */
+    .p-content {
+      flex: 1;
+      display: flex;
+      overflow: hidden;
+    }
+
+    /* LEFT PANEL (timeline) – on mobile this is below map, on desktop it's a sidebar */
+    .p-left {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    @media (min-width: 900px) {
+      .p-left {
+        width: 400px;
+        flex-shrink: 0;
+        border-right: 1px solid var(--divider);
+      }
+    }
+
+    @media (min-width: 1200px) {
+      .p-left {
+        width: 460px;
+      }
+    }
+
+    /* RIGHT PANEL (map) */
+    .p-right {
+      flex: 1;
+      position: relative;
+      display: none;
+    }
+
+    @media (min-width: 900px) {
+      .p-right {
+        display: block;
+      }
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* ===== MAP MINI (mobile only) ===== */
+    .map-mini-wrap {
+      height: 200px;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--divider);
+      position: relative;
+    }
+
+    @media (min-width: 600px) {
+      .map-mini-wrap {
+        height: 240px;
+      }
+    }
+
+    @media (min-width: 900px) {
+      .map-mini-wrap {
+        display: none;
+      }
+    }
+
+    #map-mini {
+      width: 100%;
+      height: 100%;
+    }
+
+    .map-overlay-pill {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      z-index: 500;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--bg2);
+      border: 1px solid var(--divider);
+      border-radius: 20px;
+      padding: 4px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-sec);
+      box-shadow: var(--shadow);
+    }
+
+    .expand-map-btn {
+      position: absolute;
+      bottom: 10px;
+      right: 10px;
+      z-index: 500;
+      background: var(--bg2);
+      border: 1px solid var(--divider);
+      border-radius: 8px;
+      padding: 5px 10px;
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--accent);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      box-shadow: var(--shadow);
+    }
+
+    /* ===== STATUS CARD ===== */
+    .status-card {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--divider);
+      background: var(--bg2);
+      flex-shrink: 0;
+    }
+
+    .status-card.ontime {
+      background: linear-gradient(135deg, rgba(27, 107, 69, 0.06), rgba(27, 107, 69, 0.02));
+    }
+
+    .status-card.delayed {
+      background: linear-gradient(135deg, rgba(198, 40, 40, 0.06), rgba(198, 40, 40, 0.02));
+    }
+
+    .sc-top {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+
+    .sc-bus-num {
+      font-size: 17px;
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .sc-route {
+      font-size: 12px;
+      color: var(--text-sec);
+      margin-top: 1px;
+    }
+
+    .sc-status-tag {
+      margin-left: auto;
+      font-size: 11px;
+      font-weight: 700;
+      padding: 3px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.05em;
+      flex-shrink: 0;
+    }
+
+    .sc-status-tag.ontime {
+      background: rgba(27, 107, 69, 0.12);
+      color: #1B6B45;
+      border: 1px solid rgba(27, 107, 69, 0.25);
+    }
+
+    .sc-status-tag.delayed {
+      background: rgba(198, 40, 40, 0.1);
+      color: #C62828;
+      border: 1px solid rgba(198, 40, 40, 0.2);
+    }
+
+    [data-theme="dark"] .sc-status-tag.ontime {
+      color: #2ECC71;
+    }
+
+    [data-theme="dark"] .sc-status-tag.delayed {
+      color: #EF5350;
+    }
+
+    /* Stats row */
+    .sc-stats {
+      display: flex;
+      gap: 0;
+    }
+
+    .sc-stat {
+      flex: 1;
+      text-align: center;
+      padding: 8px 4px;
+      border-right: 1px solid var(--divider);
+    }
+
+    .sc-stat:last-child {
+      border-right: none;
+    }
+
+    .sc-stat-val {
+      font-size: 18px;
+      font-weight: 800;
+      color: var(--text);
+      line-height: 1;
+    }
+
+    .sc-stat-unit {
+      font-size: 9px;
+      color: var(--text-hint);
+      font-weight: 500;
+      margin-bottom: 2px;
+    }
+
+    .sc-stat-lbl {
+      font-size: 10px;
+      color: var(--text-sec);
+      margin-top: 3px;
+    }
+
+    /* Journey progress bar */
+    .journey-progress-wrap {
+      padding: 0 14px 10px;
+      flex-shrink: 0;
+    }
+
+    .jp-label {
+      display: flex;
+      justify-content: space-between;
+      font-size: 10px;
+      color: var(--text-hint);
+      margin-bottom: 5px;
+    }
+
+    .jp-bar {
+      height: 5px;
+      background: var(--divider);
+      border-radius: 3px;
+      overflow: hidden;
+    }
+
+    .jp-fill {
+      height: 100%;
+      border-radius: 3px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      transition: width 0.6s;
+    }
+
+    /* ===== NEXT STOP BANNER ===== */
+    .next-stop-banner {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 10px 14px;
+      background: var(--bg-card2);
+      border-bottom: 2px solid var(--accent);
+      flex-shrink: 0;
+    }
+
+    .nsb-icon {
+      font-size: 22px;
+      flex-shrink: 0;
+    }
+
+    .nsb-label {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      color: var(--accent);
+    }
+
+    .nsb-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text);
+      margin-top: 1px;
+    }
+
+    .nsb-right {
+      margin-left: auto;
+      text-align: right;
+      flex-shrink: 0;
+    }
+
+    .nsb-eta {
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--accent);
+    }
+
+    .nsb-eta-lbl {
+      font-size: 9px;
+      color: var(--text-hint);
+    }
+
+    .nsb-dist {
+      font-size: 11px;
+      color: var(--text-sec);
+      margin-top: 2px;
+    }
+
+    /* ===== ROUTE TIMELINE ===== */
+    .timeline-scroll {
+      flex: 1;
+      overflow-y: auto;
+      padding: 0;
+    }
+
+    .timeline-scroll::-webkit-scrollbar {
+      width: 3px;
+    }
+
+    .timeline-scroll::-webkit-scrollbar-thumb {
+      background: var(--divider);
+    }
+
+    .tl-header {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.14em;
+      color: var(--text-hint);
+      padding: 12px 14px 6px;
+      border-bottom: 1px solid var(--divider);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .tl-stop-count {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-sec);
+    }
+
+    .tl-row {
+      display: flex;
+      align-items: stretch;
+      padding: 0 14px;
+      min-height: 60px;
+      position: relative;
+    }
+
+    .tl-row.current-row {
+      background: rgba(21, 101, 192, 0.04);
+    }
+
+    [data-theme="dark"] .tl-row.current-row {
+      background: rgba(46, 204, 113, 0.04);
+    }
+
+    /* Left: line + dot */
+    .tl-gutter {
+      width: 36px;
+      flex-shrink: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      position: relative;
+    }
+
+    .tl-dot-wrap {
+      flex-shrink: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1;
+      padding: 14px 0 0;
+    }
+
+    .tl-dot {
+      width: 16px;
+      height: 16px;
+      border-radius: 50%;
+      border: 2.5px solid var(--text-hint);
+      background: var(--bg);
+      transition: all 0.3s;
+      flex-shrink: 0;
+    }
+
+    .tl-dot.departed {
+      background: var(--primary);
+      border-color: var(--primary);
+      width: 12px;
+      height: 12px;
+    }
+
+    [data-theme="dark"] .tl-dot.departed {
+      background: #2ECC71;
+      border-color: #2ECC71;
+    }
+
+    .tl-dot.current-dot {
+      background: #1565C0;
+      border-color: #1565C0;
+      width: 20px;
+      height: 20px;
+      box-shadow: 0 0 0 4px rgba(21, 101, 192, 0.2);
+      animation: current-pulse 1.8s ease-out infinite;
+    }
+
+    [data-theme="dark"] .tl-dot.current-dot {
+      background: #2ECC71;
+      border-color: #2ECC71;
+      box-shadow: 0 0 0 4px rgba(46, 204, 113, 0.2);
+    }
+
+    @keyframes current-pulse {
+      0% {
+        box-shadow: 0 0 0 0 rgba(21, 101, 192, 0.4);
+      }
+
+      70% {
+        box-shadow: 0 0 0 10px rgba(21, 101, 192, 0);
+      }
+
+      100% {
+        box-shadow: 0 0 0 0 rgba(21, 101, 192, 0);
+      }
+    }
+
+    .tl-dot.upcoming {
+      background: var(--bg2);
+      border-color: var(--divider);
+      border-style: dashed;
+    }
+
+    .tl-dot.last-stop {
+      background: var(--accent);
+      border-color: var(--accent);
+      width: 20px;
+      height: 20px;
+    }
+
+    /* Vertical line segments */
+    .tl-line-seg {
+      flex: 1;
+      width: 2px;
+      margin: 0 auto;
+      background: var(--divider);
+      min-height: 20px;
+    }
+
+    .tl-line-seg.traveled {
+      background: linear-gradient(to bottom, var(--primary), var(--primary));
+    }
+
+    [data-theme="dark"] .tl-line-seg.traveled {
+      background: #2ECC71;
+    }
+
+    .tl-line-seg.partial {
+      background: linear-gradient(to bottom, var(--primary) 50%, var(--divider) 50%);
+    }
+
+    [data-theme="dark"] .tl-line-seg.partial {
+      background: linear-gradient(to bottom, #2ECC71 50%, var(--divider) 50%);
+    }
+
+    /* Bus icon on line (between stops) */
+    .tl-bus-on-line {
+      position: absolute;
+      left: 14px;
+      top: 50%;
+      transform: translate(-50%, -50%);
+      font-size: 16px;
+      z-index: 10;
+      filter: drop-shadow(0 1px 3px rgba(0, 0, 0, 0.2));
+      animation: bus-jitter 1.5s ease-in-out infinite;
+    }
+
+    @keyframes bus-jitter {
+
+      0%,
+      100% {
+        transform: translate(-50%, -50%) rotate(-2deg);
+      }
+
+      50% {
+        transform: translate(-50%, -50%) rotate(2deg);
+      }
+    }
+
+    /* Right: stop info */
+    .tl-info {
+      flex: 1;
+      padding: 10px 0 10px 10px;
+    }
+
+    .tl-stop-name {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text);
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .tl-stop-name.departed {
+      color: var(--text-sec);
+      font-weight: 500;
+    }
+
+    .tl-stop-name.current-name {
+      font-weight: 800;
+      color: var(--text);
+    }
+
+    .tl-code {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--text-hint);
+      background: var(--bg-card2);
+      padding: 2px 6px;
+      border-radius: 4px;
+    }
+
+    .tl-times {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      margin-top: 4px;
+    }
+
+    .tl-time-lbl {
+      font-size: 10px;
+      color: var(--text-hint);
+      font-weight: 500;
+    }
+
+    .tl-time-val {
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .tl-time-val.departed-time {
+      color: var(--text-sec);
+    }
+
+    .tl-time-val.upcoming-time {
+      color: var(--text);
+    }
+
+    .tl-time-val.current-time {
+      color: #1565C0;
+    }
+
+    [data-theme="dark"] .tl-time-val.current-time {
+      color: #2ECC71;
+    }
+
+    .tl-departed-chip {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: rgba(27, 107, 69, 0.1);
+      color: var(--primary);
+      border: 1px solid rgba(27, 107, 69, 0.2);
+    }
+
+    [data-theme="dark"] .tl-departed-chip {
+      color: #2ECC71;
+    }
+
+    .tl-delay-chip {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 2px 7px;
+      border-radius: 10px;
+      background: rgba(198, 40, 40, 0.08);
+      color: #C62828;
+      border: 1px solid rgba(198, 40, 40, 0.2);
+    }
+
+    .tl-dist {
+      font-size: 10px;
+      color: var(--text-hint);
+      margin-top: 3px;
+    }
+
+    /* Right side time col */
+    .tl-right-time {
+      width: 52px;
+      flex-shrink: 0;
+      text-align: right;
+      padding: 12px 0 0;
+    }
+
+    .tl-sched-time {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-sec);
+    }
+
+    .tl-sched-time.departed {
+      color: var(--text-hint);
+      font-size: 12px;
+    }
+
+    .tl-actual-time {
+      font-size: 11px;
+      margin-top: 2px;
+    }
+
+    .tl-actual-time.ontime {
+      color: #1B6B45;
+      font-weight: 600;
+    }
+
+    [data-theme="dark"] .tl-actual-time.ontime {
+      color: #2ECC71;
+    }
+
+    .tl-actual-time.delayed {
+      color: #C62828;
+      font-weight: 600;
+    }
+
+    /* ===== EMPTY / SEARCH STATE ===== */
+    .search-state {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 32px 24px;
+      text-align: center;
+    }
+
+    .search-state-icon {
+      font-size: 56px;
+      margin-bottom: 12px;
+    }
+
+    .search-state-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 6px;
+    }
+
+    .search-state-sub {
+      font-size: 13px;
+      color: var(--text-sec);
+      line-height: 1.65;
+      max-width: 280px;
+    }
+
+    .active-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 16px;
+    }
+
+    .active-chip {
+      padding: 6px 14px;
+      border: 1.5px solid var(--divider);
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      color: var(--text-sec);
+      background: var(--bg2);
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .active-chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+    }
+
+    /* ===== DESKTOP MAP OVERLAYS ===== */
+    .dsk-map-btn {
+      position: absolute;
+      z-index: 500;
+      background: var(--bg2);
+      border: 1px solid var(--divider);
+      border-radius: 50%;
+      width: 40px;
+      height: 40px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      color: var(--text-sec);
+      box-shadow: var(--shadow);
+    }
+
+    .dsk-map-btn:hover {
+      background: var(--bg-card2);
+    }
+
+    /* Fullscreen map modal (mobile) */
+    .map-fullscreen {
+      position: fixed;
+      inset: 0;
+      z-index: 1000;
+      display: none;
+      flex-direction: column;
+    }
+
+    .map-fullscreen.show {
+      display: flex;
+    }
+
+    .map-fullscreen-bar {
+      height: 50px;
+      background: var(--bg2);
+      border-bottom: 1px solid var(--divider);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    #map-full {
+      flex: 1;
+    }
+
+    @media (max-width: 520px) {
+      .p-topbar { gap: 6px; padding: 0 8px; }
+      .p-topbar-title { font-size: 14px; }
+      .p-topbar-sub { max-width: 150px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+      .p-search-row { padding: 8px; }
+      .p-search-input { min-width: 0; font-size: 12px; }
+      .p-search-btn { width: 42px; padding: 0; justify-content: center; font-size: 0; }
+      .p-search-btn .material-icons-round { font-size: 16px !important; }
+      .sc-stats { display: grid; grid-template-columns: repeat(2, 1fr); }
+      .sc-stat { border-bottom: 1px solid var(--divider); }
+      .seat-fare-bar { flex-wrap: wrap; gap: 8px; }
+      .sf-pay-btn { width: 100%; justify-content: center; }
+      .tl-right-time { width: 44px; }
+    }
+  </style>
+</head>
+
+<body>
+  <div class="page-root">
+
+    <!-- TOP BAR -->
+    <div class="p-topbar">
+      <a href="index.html" class="icon-btn" style="color:var(--text-sec);text-decoration:none;">
+        <span class="material-icons-round">arrow_back</span>
+      </a>
+      <div style="flex:1;">
+        <div class="p-topbar-title">Track Bus</div>
+        <div class="p-topbar-sub" id="topbar-sub">Search for a bus to begin</div>
+      </div>
+      <button class="icon-btn" id="bus-list-btn" title="Active buses">
+        <span class="material-icons-round">list</span>
+      </button>
+      <a href="tickets.html" class="icon-btn" title="Book Tickets" style="color:var(--text-sec);text-decoration:none;">
+        <span class="material-icons-round">confirmation_number</span>
+      </a>
+      <button class="auth-avatar-btn" data-auth-avatar id="pax-auth-btn">?</button>
+      <button class="icon-btn" id="theme-btn">
+        <span class="material-icons-round" id="theme-icon">dark_mode</span>
+      </button>
+    </div>
+
+    <!-- SEARCH ROW -->
+    <div class="p-search-row">
+      <input class="p-search-input" id="bus-search" placeholder="Enter Bus ID (e.g. DL-BUS-101)" autocomplete="off" />
+      <button class="p-search-btn" id="search-btn">
+        <span class="material-icons-round" style="font-size:16px;">search</span> TRACK
+      </button>
+    </div>
+
+    <!-- MAIN CONTENT -->
+    <div class="p-content">
+
+      <!-- LEFT PANEL -->
+      <div class="p-left" id="p-left">
+
+        <!-- SEARCH STATE (default) -->
+        <div class="search-state" id="search-state">
+          <div class="search-state-icon">🚏</div>
+          <div class="search-state-title">Find Your Bus</div>
+          <div class="search-state-sub">Enter a Bus ID above or choose from active buses below</div>
+          <div class="active-chips" id="active-chips"></div>
+        </div>
+
+        <!-- TRACKING PANEL (shown when bus selected) -->
+        <div id="tracking-panel" style="display:none;flex-direction:column;height:100%;overflow:hidden;display:none;">
+
+          <!-- Mini Map (mobile only) -->
+          <div class="map-mini-wrap">
+            <div id="map-mini"></div>
+            <div class="map-overlay-pill" id="map-pill">
+              <span class="live-dot" style="color:#27AE60;"></span> LIVE
+            </div>
+            <button class="expand-map-btn" id="expand-map-btn">
+              <span class="material-icons-round" style="font-size:14px;">fullscreen</span> Full Map
+            </button>
+          </div>
+
+          <!-- Status Card -->
+          <div class="status-card" id="status-card">
+            <div class="sc-top">
+              <div>
+                <div class="sc-bus-num" id="sc-bus-num">—</div>
+                <div class="sc-route" id="sc-route">—</div>
+              </div>
+              <div class="sc-status-tag ontime" id="sc-status-tag">ON TIME</div>
+            </div>
+            <div class="sc-stats">
+              <div class="sc-stat">
+                <div class="sc-stat-unit">km/h</div>
+                <div class="sc-stat-val" id="sc-speed">—</div>
+                <div class="sc-stat-lbl">Speed</div>
+              </div>
+              <div class="sc-stat">
+                <div class="sc-stat-unit">min</div>
+                <div class="sc-stat-val" id="sc-delay">0</div>
+                <div class="sc-stat-lbl">Delay</div>
+              </div>
+              <div class="sc-stat">
+                <div class="sc-stat-unit">°</div>
+                <div class="sc-stat-val" id="sc-heading">—</div>
+                <div class="sc-stat-lbl">Heading</div>
+              </div>
+              <div class="sc-stat">
+                <div class="sc-stat-unit">m</div>
+                <div class="sc-stat-val" id="sc-acc">—</div>
+                <div class="sc-stat-lbl">GPS Acc</div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Journey progress -->
+          <div class="journey-progress-wrap">
+            <div class="jp-label">
+              <span id="jp-from">—</span><span id="jp-pct">0%</span><span id="jp-to">—</span>
+            </div>
+            <div class="jp-bar">
+              <div class="jp-fill" id="jp-fill" style="width:0%;"></div>
+            </div>
+          </div>
+
+          <!-- Next stop banner -->
+          <div class="next-stop-banner" id="next-stop-banner">
+            <div class="nsb-icon">⏭</div>
+            <div>
+              <div class="nsb-label">NEXT STOP</div>
+              <div class="nsb-name" id="nsb-name">—</div>
+              <div class="nsb-dist" id="nsb-dist">—</div>
+            </div>
+            <div class="nsb-right">
+              <div class="nsb-eta" id="nsb-eta">—</div>
+              <div class="nsb-eta-lbl">Scheduled</div>
+            </div>
+          </div>
+
+          <div class="seat-fare-bar" id="seat-fare-bar">
+            <div class="sf-block">
+              <span class="material-icons-round" style="color:var(--primary);">event_seat</span>
+              <div>
+                <div class="sf-val" id="sf-seats">—</div>
+                <div class="sf-lbl">seats available</div>
+              </div>
+            </div>
+            <div class="sf-divider"></div>
+            <div class="sf-block">
+              <span class="material-icons-round" style="color:var(--accent);">payments</span>
+              <div>
+                <div class="sf-val" id="sf-fare">₹—</div>
+                <div class="sf-lbl">estimated fare</div>
+              </div>
+            </div>
+            <a class="sf-pay-btn" id="sf-pay-btn" href="tickets.html">
+              <span class="material-icons-round">payment</span> Pay
+            </a>
+          </div>
+
+          <div class="onbus-prompt" id="onbus-prompt">
+            <div class="onbus-icon">📍</div>
+            <div class="onbus-text">Are you inside this bus?</div>
+            <div class="onbus-sub">Sharing your GPS helps other passengers get a more accurate live position.</div>
+            <div class="onbus-btns">
+              <button class="onbus-btn yes" id="onbus-yes"><span class="material-icons-round">my_location</span> Yes, share GPS</button>
+              <button class="onbus-btn no" id="onbus-no"><span class="material-icons-round">visibility</span> No, just track</button>
+            </div>
+          </div>
+
+          <div class="onbus-status-bar" id="onbus-status" style="display:none;">
+            <span class="material-icons-round" style="font-size:17px;color:var(--primary);">gps_fixed</span>
+            <div style="font-size:12px;font-weight:700;color:var(--text);">Passenger GPS sharing active</div>
+            <div style="font-size:11px;color:var(--text-sec);margin-left:auto;" id="onbus-count">0 onboard</div>
+          </div>
+
+          <!-- Timeline -->
+          <div class="tl-header">
+            <span>ROUTE STOPS</span>
+            <span class="tl-stop-count" id="tl-stop-count"></span>
+          </div>
+          <div class="timeline-scroll" id="timeline-scroll">
+            <div id="timeline-container"></div>
+          </div>
+
+        </div><!-- /tracking-panel -->
+      </div><!-- /p-left -->
+
+      <!-- RIGHT PANEL (desktop only - full map) -->
+      <div class="p-right" id="p-right">
+        <div id="map"></div>
+        <!-- Desktop map controls -->
+        <button class="dsk-map-btn" style="top:16px;right:16px;" id="fit-all-btn" title="Show all buses">
+          <span class="material-icons-round" style="font-size:20px;">zoom_out_map</span>
+        </button>
+        <div style="position:absolute;bottom:40px;left:50%;transform:translateX(-50%);z-index:500;" id="dsk-map-pill">
+        </div>
+      </div>
+
+    </div><!-- /p-content -->
+  </div><!-- /page-root -->
+
+  <!-- FULLSCREEN MAP (mobile) -->
+  <div class="map-fullscreen" id="map-fullscreen">
+    <div class="map-fullscreen-bar">
+      <button class="icon-btn" id="close-fullmap" style="color:var(--text-sec)">
+        <span class="material-icons-round">arrow_back</span>
+      </button>
+      <div>Full Map</div>
+      <div class="live-badge" style="margin-left:auto;"><span class="live-dot"></span>LIVE</div>
+    </div>
+    <div id="map-full"></div>
+  </div>
+
+  <!-- ACTIVE BUS LIST OVERLAY -->
+  <div id="bus-list-overlay" style="position:fixed;inset:0;z-index:800;display:none;align-items:flex-end;">
+    <div style="position:absolute;inset:0;background:rgba(0,0,0,0.5);" id="bus-list-bg"></div>
+    <div
+      style="position:relative;z-index:1;width:100%;max-height:70vh;background:var(--modal-bg);border-radius:20px 20px 0 0;border:1px solid var(--divider);border-bottom:none;overflow:hidden;display:flex;flex-direction:column;animation:slides-up 0.3s ease;">
+      <div
+        style="display:flex;align-items:center;padding:16px 16px 12px;border-bottom:1px solid var(--divider);position:sticky;top:0;background:var(--modal-bg);">
+        <div style="font-size:14px;font-weight:700;flex:1;">Active Buses</div>
+        <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+        <button class="icon-btn" id="close-bus-list" style="color:var(--text-sec);margin-left:8px;">
+          <span class="material-icons-round">close</span>
+        </button>
+      </div>
+      <div id="bus-list-content" style="overflow-y:auto;flex:1;"></div>
+    </div>
+  </div>
+
+  <div class="snackbar" id="snackbar"></div>
+
+        <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="api.js"></script>
+  <script src="shared.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    document.getElementById('pax-auth-btn').addEventListener('click', () => {
+      TracerAuth.init();
+      if (TracerAuth.isLoggedIn()) TracerAuth.openProfile();
+      else TracerAuth.openLogin();
+    });
+  </script>
+  <script src="passenger-app.js"></script>
+</body>
+
+</html>
+</body>
+
+</html>

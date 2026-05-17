@@ -1,0 +1,798 @@
+﻿<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title>Tracer Live — Book Tickets</title>
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { padding-top: 56px; padding-bottom: 80px; max-width: 960px !important; margin: 0 auto; }
+    .page-content { padding: 16px; max-width: 720px; margin: 0 auto; }
+    .city-swap-row { display: flex; align-items: center; gap: 10px; }
+    .city-field {
+      flex: 1; cursor: pointer;
+      background: var(--bg2); border: 1.5px solid var(--divider);
+      border-radius: var(--radius-sm); padding: 12px 14px; transition: border-color 0.2s;
+    }
+    .city-field:focus-within, .city-field:hover { border-color: var(--accent); }
+    .city-field-lbl { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; color: var(--text-hint); margin-bottom: 4px; }
+    .city-field-val { font-size: 16px; font-weight: 700; color: var(--text); }
+    .city-field-code { font-size: 11px; color: var(--text-hint); }
+    .city-placeholder { font-size: 14px; color: var(--text-hint); font-weight: 500; }
+    .swap-circle {
+      width: 38px; height: 38px; border-radius: 50%; flex-shrink: 0;
+      background: var(--bg2); border: 2px solid var(--divider);
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; color: var(--accent); transition: all 0.2s;
+    }
+    .swap-circle:hover { background: var(--bg-card2); transform: rotate(180deg); }
+    .date-pax-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-top: 10px; }
+    .field-box {
+      background: var(--bg2); border: 1.5px solid var(--divider);
+      border-radius: var(--radius-sm); padding: 10px 14px; cursor: pointer;
+    }
+    .field-box:hover { border-color: var(--accent); }
+    .field-box-lbl { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; color: var(--text-hint); margin-bottom: 4px; }
+    .field-box-val { font-size: 14px; font-weight: 700; color: var(--text); display: flex; align-items: center; gap: 6px; }
+    .type-filter { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 10px; }
+    .type-chip {
+      padding: 5px 12px; border: 1.5px solid var(--divider); border-radius: 20px;
+      font-size: 11px; font-weight: 600; cursor: pointer; color: var(--text-sec);
+      background: var(--bg2); transition: all 0.2s;
+    }
+    .type-chip.active { background: var(--btn-bg); color: #fff; border-color: transparent; }
+    /* Passenger detail forms */
+    .pax-form-card {
+      background: var(--bg-card); border: 1px solid var(--divider); border-radius: var(--radius);
+      margin-bottom: 12px; overflow: hidden;
+    }
+    .pax-form-header {
+      padding: 10px 14px; background: var(--bg-card2);
+      border-bottom: 1px solid var(--divider);
+      font-size: 12px; font-weight: 700; color: var(--text-sec); letter-spacing: 0.06em;
+    }
+    .pax-form-body { padding: 14px; }
+    .gender-row { display: flex; gap: 8px; }
+    .gender-opt {
+      flex: 1; padding: 8px; border: 1.5px solid var(--divider); border-radius: var(--radius-xs);
+      font-family: 'Outfit', sans-serif; font-size: 11px; font-weight: 600;
+      cursor: pointer; background: var(--bg2); color: var(--text-sec);
+      display: flex; align-items: center; justify-content: center; gap: 4px;
+      transition: all 0.2s;
+    }
+    .gender-opt.active { border-color: var(--accent); color: var(--accent); background: rgba(2,136,209,0.06); }
+    /* City autocomplete */
+    .city-autocomplete {
+      position: fixed; inset: 0; z-index: 9000; background: var(--modal-bg);
+      display: none; flex-direction: column;
+    }
+    .city-autocomplete.open { display: flex; }
+    .city-ac-header {
+      display: flex; align-items: center; gap: 10px; padding: 12px 12px;
+      border-bottom: 1px solid var(--divider);
+    }
+    .city-ac-input {
+      flex: 1; border: none; background: transparent; font-family: 'Outfit', sans-serif;
+      font-size: 16px; font-weight: 500; color: var(--text); outline: none;
+    }
+    .city-ac-input::placeholder { color: var(--text-hint); }
+    .city-ac-list { flex: 1; overflow-y: auto; }
+    .city-ac-item {
+      display: flex; align-items: center; gap: 12px; padding: 14px 16px;
+      border-bottom: 1px solid var(--divider); cursor: pointer; transition: background 0.15s;
+    }
+    .city-ac-item:hover { background: var(--bg-card2); }
+    .city-ac-name { font-size: 15px; font-weight: 600; color: var(--text); }
+    .city-ac-state { font-size: 12px; color: var(--text-hint); }
+    /* Bottom action bar */
+    .action-bar {
+      position: fixed; bottom: 0; left: 0; right: 0; max-width: 720px; margin: 0 auto;
+      padding: 12px 16px; background: var(--bg2);
+      border-top: 1px solid var(--divider); box-shadow: 0 -4px 20px rgba(0,0,0,0.1);
+      display: flex; align-items: center; gap: 12px; z-index: 500;
+    }
+    .action-bar-info { flex: 1; }
+    .action-bar-label { font-size: 11px; color: var(--text-hint); }
+    .action-bar-val   { font-size: 16px; font-weight: 800; color: var(--text); }
+    @media (min-width: 900px) {
+      body { background: linear-gradient(180deg, var(--bg), var(--bg-card2)); }
+      .top-bar { max-width: 100% !important; left:0 !important; transform:none !important; padding:0 40px; }
+      .step-bar { max-width: 720px; margin-left:auto; margin-right:auto; border-left:1px solid var(--divider); border-right:1px solid var(--divider); }
+      .page-content, .confirm-card { box-shadow: var(--shadow); border-left:1px solid var(--divider); border-right:1px solid var(--divider); background:var(--bg); }
+    }
+    @media (max-width: 430px) {
+      .city-swap-row, .date-pax-row { grid-template-columns: 1fr; }
+      .city-swap-row { flex-direction: column; align-items: stretch; }
+      .swap-circle { transform: rotate(90deg); align-self:center; }
+      .action-bar { padding: 10px 12px; }
+      .action-bar .btn { padding: 0 16px; }
+    }
+  </style>
+</head>
+<body>
+  <!-- Top bar -->
+  <header class="top-bar" style="max-width:720px;left:50%;transform:translateX(-50%);">
+    <button class="icon-btn" id="back-btn"><span class="material-icons-round">arrow_back</span></button>
+    <div style="flex:1;">
+      <div class="top-bar-title" id="page-title">Book Tickets</div>
+    </div>
+    <button class="auth-avatar-btn" data-auth-avatar id="profile-btn">?</button>
+    <button class="icon-btn" id="theme-btn"><span class="material-icons-round" id="theme-icon">dark_mode</span></button>
+  </header>
+
+  <!-- Step indicator -->
+  <div class="step-bar" id="step-bar">
+    <div class="step-item">
+      <div class="step-dot active" id="dot-1">1</div>
+      <span class="step-label active" id="lbl-1">Search</span>
+    </div>
+    <div class="step-line" id="line-1"></div>
+    <div class="step-item">
+      <div class="step-dot" id="dot-2">2</div>
+      <span class="step-label" id="lbl-2">Buses</span>
+    </div>
+    <div class="step-line" id="line-2"></div>
+    <div class="step-item">
+      <div class="step-dot" id="dot-3">3</div>
+      <span class="step-label" id="lbl-3">Seats</span>
+    </div>
+    <div class="step-line" id="line-3"></div>
+    <div class="step-item">
+      <div class="step-dot" id="dot-4">4</div>
+      <span class="step-label" id="lbl-4">Details</span>
+    </div>
+    <div class="step-line" id="line-4"></div>
+    <div class="step-item">
+      <div class="step-dot" id="dot-5">5</div>
+      <span class="step-label" id="lbl-5">Confirm</span>
+    </div>
+  </div>
+
+  <!-- Step 1: Search -->
+  <div class="page-content" id="step-search">
+    <div style="margin-bottom:12px;">
+      <div class="city-swap-row">
+        <div class="city-field" id="from-field" onclick="openCityPicker('from')">
+          <div class="city-field-lbl">FROM</div>
+          <div id="from-city-val"><span class="city-placeholder">Select city or stop</span></div>
+        </div>
+        <div class="swap-circle" id="swap-cities">
+          <span class="material-icons-round" style="font-size:20px;">swap_horiz</span>
+        </div>
+        <div class="city-field" id="to-field" onclick="openCityPicker('to')">
+          <div class="city-field-lbl">TO</div>
+          <div id="to-city-val"><span class="city-placeholder">Select city or stop</span></div>
+        </div>
+      </div>
+      <div class="date-pax-row">
+        <div class="field-box">
+          <div class="field-box-lbl">DATE OF TRAVEL</div>
+          <div class="field-box-val">
+            <span class="material-icons-round" style="font-size:16px;color:var(--accent)">calendar_today</span>
+            <input type="date" id="travel-date" style="border:none;background:transparent;font-family:Outfit,sans-serif;font-size:14px;font-weight:700;color:var(--text);outline:none;" />
+          </div>
+        </div>
+        <div class="field-box">
+          <div class="field-box-lbl">PASSENGERS</div>
+          <div class="field-box-val" style="justify-content:space-between;">
+            <button class="icon-btn" style="width:28px;height:28px;" onclick="changePax(-1)"><span class="material-icons-round" style="font-size:16px;">remove</span></button>
+            <span style="font-size:18px;font-weight:800;" id="pax-count">1</span>
+            <button class="icon-btn" style="width:28px;height:28px;" onclick="changePax(1)"><span class="material-icons-round" style="font-size:16px;">add</span></button>
+          </div>
+        </div>
+      </div>
+      <div class="type-filter">
+        <span style="font-size:11px;font-weight:700;color:var(--text-hint);align-self:center;">TYPE:</span>
+        <button class="type-chip active" data-type="all">All</button>
+        <button class="type-chip" data-type="ac-sleeper">AC Sleeper</button>
+        <button class="type-chip" data-type="ac-seater">AC Seater</button>
+        <button class="type-chip" data-type="sleeper">Sleeper</button>
+        <button class="type-chip" data-type="seater">Seater</button>
+      </div>
+    </div>
+    <button class="btn btn-primary btn-full" id="search-buses-btn" style="height:52px;font-size:14px;">
+      <span class="material-icons-round">search</span> SEARCH BUSES
+    </button>
+    <!-- Popular routes -->
+    <div style="margin-top:24px;">
+      <div class="t-section-hdr" style="padding:0 0 10px;"><span>POPULAR ROUTES</span></div>
+      <div id="popular-routes"></div>
+    </div>
+  </div>
+
+  <!-- Step 2: Bus results -->
+  <div class="page-content" id="step-results" style="display:none;">
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:16px;">
+      <div style="flex:1;">
+        <div style="font-size:16px;font-weight:800;" id="results-route">Delhi → Jaipur</div>
+        <div style="font-size:12px;color:var(--text-sec);" id="results-meta">–</div>
+      </div>
+      <div class="live-badge" id="results-count"><span class="live-dot"></span>0 buses</div>
+    </div>
+    <div id="bus-results-list"></div>
+  </div>
+
+  <!-- Step 3: Seat selection -->
+  <div id="step-seats" style="display:none;">
+    <div class="page-content">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
+        <div>
+          <div style="font-size:15px;font-weight:800;" id="seat-bus-name">—</div>
+          <div style="font-size:12px;color:var(--text-sec);" id="seat-bus-meta">—</div>
+        </div>
+        <div style="margin-left:auto;">
+          <div style="font-size:20px;font-weight:800;color:var(--text);" id="seat-fare">₹—</div>
+          <div style="font-size:10px;color:var(--text-hint);">per seat</div>
+        </div>
+      </div>
+      <div class="seat-map-legend">
+        <div class="legend-item"><div class="legend-box available"></div>Available</div>
+        <div class="legend-item"><div class="legend-box booked"></div>Booked</div>
+        <div class="legend-item"><div class="legend-box ladies"></div>Ladies</div>
+        <div class="legend-item"><div class="legend-box selected"></div>Selected</div>
+      </div>
+      <div class="bus-shape">
+        <div class="bus-driver-row"><span class="steering-icon">🚌</span></div>
+        <div id="seat-map-grid"></div>
+      </div>
+    </div>
+    <div class="seat-info-footer">
+      <div class="selected-seats" id="selected-seats-lbl">Select <span id="req-seats">1</span> seat(s)</div>
+      <div>
+        <div class="seat-total" id="seat-total-fare">₹0</div>
+        <div style="font-size:10px;color:var(--text-hint);">Total fare</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Step 4: Passenger details -->
+  <div class="page-content" id="step-passengers" style="display:none;">
+    <div style="font-size:14px;font-weight:700;color:var(--text-sec);margin-bottom:14px;letter-spacing:0.04em;">PASSENGER INFORMATION</div>
+    <div id="pax-forms-container"></div>
+    <div style="background:rgba(2,136,209,0.06);border:1px solid rgba(2,136,209,0.2);border-radius:var(--radius-sm);padding:12px 14px;font-size:12px;color:var(--text-sec);display:flex;gap:8px;align-items:flex-start;">
+      <span class="material-icons-round" style="font-size:16px;color:var(--accent);flex-shrink:0;margin-top:1px;">info</span>
+      Ticket will be linked to your Tracer Live account. Carry a valid government ID during travel.
+    </div>
+  </div>
+
+  <!-- Step 5: Confirmation -->
+  <div id="step-confirm" style="display:none;padding-bottom:20px;">
+    <div class="confirm-card">
+      <div class="confirm-banner">
+        <div class="confirm-checkmark">✅</div>
+        <div class="confirm-title">Booking Confirmed!</div>
+        <div class="confirm-pnr" id="conf-pnr">PNR: —</div>
+      </div>
+      <div class="confirm-journey">
+        <div class="confirm-city">
+          <div class="confirm-city-val" id="conf-dep-time">—</div>
+          <div class="confirm-city-lbl" id="conf-from">—</div>
+        </div>
+        <div class="confirm-mid">
+          <div class="confirm-mid-dur" id="conf-dur">—</div>
+          <div class="confirm-mid-line"></div>
+          <div style="font-size:12px;color:var(--text-hint);margin-top:4px;" id="conf-bus-type">—</div>
+        </div>
+        <div class="confirm-city" style="text-align:right;">
+          <div class="confirm-city-val" id="conf-arr-time">—</div>
+          <div class="confirm-city-lbl" id="conf-to">—</div>
+        </div>
+      </div>
+      <div class="confirm-body">
+        <div class="confirm-row"><span class="confirm-row-key">Bus</span><span class="confirm-row-val" id="conf-bus">—</span></div>
+        <div class="confirm-row"><span class="confirm-row-key">Operator</span><span class="confirm-row-val" id="conf-op">—</span></div>
+        <div class="confirm-row"><span class="confirm-row-key">Date</span><span class="confirm-row-val" id="conf-date">—</span></div>
+        <div class="confirm-row"><span class="confirm-row-key">Seats</span><span class="confirm-row-val" id="conf-seats">—</span></div>
+        <div class="confirm-row"><span class="confirm-row-key">Passengers</span><span class="confirm-row-val" id="conf-pax">—</span></div>
+        <div class="confirm-row" style="border:none;padding-top:12px;">
+          <span style="font-size:14px;font-weight:700;">Total Paid</span>
+          <span style="font-size:20px;font-weight:800;color:var(--primary);" id="conf-total">₹—</span>
+        </div>
+      </div>
+    </div>
+    <div style="padding:0 16px;display:flex;flex-direction:column;gap:10px;">
+      <button class="btn btn-primary btn-full" onclick="window.location.href='passenger.html'">
+        <span class="material-icons-round">gps_fixed</span> TRACK THIS BUS LIVE
+      </button>
+      <button class="btn btn-outline btn-full" onclick="goToStep(1)">
+        <span class="material-icons-round">add</span> Book Another Ticket
+      </button>
+    </div>
+  </div>
+
+  <!-- City Autocomplete Overlay -->
+  <div class="city-autocomplete" id="city-ac">
+    <div class="city-ac-header">
+      <button class="icon-btn" onclick="closeCityPicker()"><span class="material-icons-round">arrow_back</span></button>
+      <input class="city-ac-input" id="city-ac-input" placeholder="Search city or stop…" autocomplete="off" />
+      <button class="icon-btn" onclick="document.getElementById('city-ac-input').value='';filterCities('')"><span class="material-icons-round">close</span></button>
+    </div>
+    <div class="city-ac-list" id="city-ac-list"></div>
+  </div>
+
+  <!-- Action bar -->
+  <div class="action-bar" id="action-bar" style="display:none;">
+    <div class="action-bar-info">
+      <div class="action-bar-label" id="ab-label">Next</div>
+      <div class="action-bar-val"   id="ab-val">—</div>
+    </div>
+    <button class="btn btn-primary" id="next-btn" style="height:48px;padding:0 28px;font-size:14px;">
+      CONTINUE <span class="material-icons-round" style="font-size:16px;">arrow_forward</span>
+    </button>
+  </div>
+
+  <div class="snackbar" id="snackbar"></div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="api.js"></script>
+  <script src="shared.js"></script>
+  <script src="auth.js"></script>
+  <script>
+  // ================================================================
+  //  TICKET DATA
+  // ================================================================
+  const CITIES = [
+    { name:'Delhi',code:'DEL',state:'Delhi' }, { name:'Jaipur',code:'JP',state:'Rajasthan' },
+    { name:'Agra',code:'AGR',state:'UP' }, { name:'Lucknow',code:'LKO',state:'UP' },
+    { name:'Chandigarh',code:'CHD',state:'Punjab' }, { name:'Amritsar',code:'ATQ',state:'Punjab' },
+    { name:'Mumbai',code:'BOM',state:'Maharashtra' }, { name:'Pune',code:'PNQ',state:'Maharashtra' },
+    { name:'Bangalore',code:'BLR',state:'Karnataka' }, { name:'Chennai',code:'MAA',state:'Tamil Nadu' },
+    { name:'Hyderabad',code:'HYD',state:'Telangana' }, { name:'Ahmedabad',code:'AMD',state:'Gujarat' },
+    { name:'Jodhpur',code:'JDH',state:'Rajasthan' }, { name:'Udaipur',code:'UDR',state:'Rajasthan' },
+    { name:'Shimla',code:'SLV',state:'HP' }, { name:'Haridwar',code:'HDW',state:'Uttarakhand' },
+    { name:'Manali',code:'KUU',state:'HP' }, { name:'Varanasi',code:'VNS',state:'UP' },
+    { name:'Patna',code:'PAT',state:'Bihar' }, { name:'Kolkata',code:'CCU',state:'WB' },
+  ];
+
+  const POPULAR_ROUTES = [
+    { from:'Delhi', to:'Jaipur' }, { from:'Delhi', to:'Agra' },
+    { from:'Mumbai', to:'Pune' }, { from:'Bangalore', to:'Chennai' },
+    { from:'Delhi', to:'Chandigarh' }, { from:'Hyderabad', to:'Bangalore' },
+  ];
+
+  const BUS_DB = {
+    'Delhi-Jaipur': [
+      { id:'RSRTC-VOL-101', op:'RSRTC Volvo', type:'AC Seater', dep:'06:00', arr:'10:45', dur:'4h 45m', fare:650, total:40, bookedSeats:22 },
+      { id:'RSRTC-SLP-202', op:'RSRTC', type:'AC Sleeper', dep:'22:00', arr:'04:30', dur:'6h 30m', fare:950, total:30, bookedSeats:8 },
+      { id:'RAJ-TRV-303', op:'Rajasthan Travels', type:'Seater', dep:'07:30', arr:'13:00', dur:'5h 30m', fare:350, total:50, bookedSeats:31 },
+      { id:'INF-SLP-404', op:'InfraBus', type:'AC Sleeper', dep:'20:00', arr:'02:30', dur:'6h 30m', fare:850, total:28, bookedSeats:28 },
+    ],
+    'Delhi-Agra': [
+      { id:'DTC-EX-101', op:'DTC Express', type:'AC Seater', dep:'07:00', arr:'10:30', dur:'3h 30m', fare:450, total:44, bookedSeats:18 },
+      { id:'UP-RTC-202', op:'UPSRTC', type:'Seater', dep:'08:00', arr:'11:45', dur:'3h 45m', fare:250, total:52, bookedSeats:38 },
+    ],
+    'Delhi-Chandigarh': [
+      { id:'HRTC-VOL-101', op:'HRTC Volvo', type:'AC Seater', dep:'07:00', arr:'11:00', dur:'4h 00m', fare:700, total:44, bookedSeats:20 },
+      { id:'PBR-SLP-202', op:'Punjab Roadways', type:'Sleeper', dep:'22:30', arr:'04:00', dur:'5h 30m', fare:550, total:36, bookedSeats:12 },
+    ],
+    'Mumbai-Pune': [
+      { id:'MSRTC-EX-101', op:'MSRTC Express', type:'AC Seater', dep:'06:00', arr:'09:30', dur:'3h 30m', fare:380, total:44, bookedSeats:30 },
+      { id:'PVT-BUS-202', op:'Neeta Tours', type:'Seater', dep:'07:30', arr:'11:00', dur:'3h 30m', fare:280, total:50, bookedSeats:19 },
+    ],
+    'Bangalore-Chennai': [
+      { id:'KSRTC-VOL-101', op:'KSRTC Airavat', type:'AC Seater', dep:'08:00', arr:'14:30', dur:'6h 30m', fare:750, total:40, bookedSeats:15 },
+      { id:'TN-SLP-202', op:'TNSTC', type:'AC Sleeper', dep:'22:00', arr:'05:00', dur:'7h 00m', fare:900, total:28, bookedSeats:9 },
+    ],
+  };
+
+  // ================================================================
+  //  APP STATE
+  // ================================================================
+  let state = {
+    step: 1, from: null, to: null, date: '', pax: 1, busType: 'all',
+    selectedBus: null, selectedSeats: [], passengers: [], pnr: '',
+    pickerFor: null,
+  };
+
+  // ================================================================
+  //  INIT
+  // ================================================================
+  initTheme();
+  document.getElementById('theme-btn').addEventListener('click', toggleTheme);
+  TracerAuth.init();
+  document.getElementById('profile-btn').addEventListener('click', () => {
+    if (TracerAuth.isLoggedIn()) TracerAuth.openProfile();
+    else TracerAuth.openLogin();
+  });
+  document.getElementById('back-btn').addEventListener('click', () => {
+    if (state.step > 1) goToStep(state.step - 1);
+    else window.location.href = 'index.html';
+  });
+
+  // Set today's date as default
+  const today = new Date().toISOString().slice(0,10);
+  document.getElementById('travel-date').value = today;
+  state.date = today;
+  document.getElementById('travel-date').addEventListener('change', e => state.date = e.target.value);
+
+  // Popular routes
+  document.getElementById('popular-routes').innerHTML = POPULAR_ROUTES.map(r =>
+    `<div class="t-saved-row" style="cursor:pointer;border-radius:var(--radius-sm);margin-bottom:6px;background:var(--bg2);border:1px solid var(--divider);" onclick="quickSelect('${r.from}','${r.to}')">
+      <span class="material-icons-round" style="color:var(--accent);font-size:16px;">trending_flat</span>
+      <div style="flex:1;"><div style="font-size:13px;font-weight:700;">${r.from} → ${r.to}</div></div>
+      <span class="material-icons-round" style="color:var(--text-hint);font-size:16px;">chevron_right</span>
+    </div>`).join('');
+
+  // Type filter chips
+  document.querySelectorAll('.type-chip').forEach(b => b.addEventListener('click', () => {
+    document.querySelectorAll('.type-chip').forEach(x => x.classList.remove('active'));
+    b.classList.add('active');
+    state.busType = b.dataset.type;
+  }));
+
+  // Search button
+  document.getElementById('search-buses-btn').addEventListener('click', doSearch);
+
+  // Swap cities
+  document.getElementById('swap-cities').addEventListener('click', () => {
+    const tmp = state.from; state.from = state.to; state.to = tmp;
+    renderCityFields();
+  });
+
+  function quickSelect(from, to) {
+    state.from = CITIES.find(c => c.name === from);
+    state.to   = CITIES.find(c => c.name === to);
+    renderCityFields();
+    doSearch();
+  }
+
+  // ================================================================
+  //  CITY PICKER
+  // ================================================================
+  function openCityPicker(field) {
+    state.pickerFor = field;
+    document.getElementById('city-ac').classList.add('open');
+    document.getElementById('city-ac-input').value = '';
+    filterCities('');
+    setTimeout(() => document.getElementById('city-ac-input').focus(), 100);
+  }
+  function closeCityPicker() { document.getElementById('city-ac').classList.remove('open'); }
+  window.openCityPicker = openCityPicker;
+  window.closeCityPicker = closeCityPicker;
+
+  document.getElementById('city-ac-input').addEventListener('input', e => filterCities(e.target.value));
+
+  function filterCities(q) {
+    const list = CITIES.filter(c => !q || c.name.toLowerCase().includes(q.toLowerCase()) || c.state.toLowerCase().includes(q.toLowerCase()));
+    document.getElementById('city-ac-list').innerHTML = list.map(c => `
+      <div class="city-ac-item" onclick="selectCity('${c.name}')">
+        <div style="width:36px;height:36px;border-radius:10px;background:rgba(2,136,209,0.1);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:16px;">🏙</div>
+        <div><div class="city-ac-name">${c.name}</div><div class="city-ac-state">${c.state}</div></div>
+        <span style="font-size:11px;font-weight:700;color:var(--text-hint);margin-left:auto;">${c.code}</span>
+      </div>`).join('');
+  }
+
+  function selectCity(name) {
+    const city = CITIES.find(c => c.name === name);
+    if (state.pickerFor === 'from') state.from = city;
+    else state.to = city;
+    renderCityFields();
+    closeCityPicker();
+  }
+  window.selectCity = selectCity;
+
+  function renderCityFields() {
+    const f = state.from, t = state.to;
+    document.getElementById('from-city-val').innerHTML = f
+      ? `<div class="city-field-val">${f.name}</div><div class="city-field-code">${f.code} · ${f.state}</div>`
+      : `<span class="city-placeholder">Select city or stop</span>`;
+    document.getElementById('to-city-val').innerHTML = t
+      ? `<div class="city-field-val">${t.name}</div><div class="city-field-code">${t.code} · ${t.state}</div>`
+      : `<span class="city-placeholder">Select city or stop</span>`;
+  }
+
+  // Passenger count
+  window.changePax = (d) => {
+    state.pax = Math.max(1, Math.min(6, state.pax + d));
+    document.getElementById('pax-count').textContent = state.pax;
+  };
+
+  // ================================================================
+  //  SEARCH
+  // ================================================================
+  function doSearch() {
+    if (!state.from) { showSnackbar('Please select a departure city'); return; }
+    if (!state.to)   { showSnackbar('Please select a destination city'); return; }
+    if (state.from.name === state.to.name) { showSnackbar('From and To cities cannot be same'); return; }
+
+    const key = `${state.from.name}-${state.to.name}`;
+    const buses = BUS_DB[key] || generateMockBuses(state.from.name, state.to.name);
+    let filtered = buses;
+    if (state.busType !== 'all') filtered = buses.filter(b => b.type.toLowerCase().replace(' ','-') === state.busType || b.type.toLowerCase().includes(state.busType.replace('-',' ')));
+
+    document.getElementById('results-route').textContent = `${state.from.name} → ${state.to.name}`;
+    document.getElementById('results-meta').textContent   = `${new Date(state.date).toDateString()} · ${state.pax} Passenger(s)`;
+    document.getElementById('results-count').innerHTML   = `<span class="live-dot"></span>${filtered.length} bus${filtered.length!==1?'es':''}`;
+
+    document.getElementById('bus-results-list').innerHTML = filtered.length
+      ? filtered.map(b => renderBusCard(b)).join('')
+      : '<div class="empty-state"><div class="empty-icon">🚌</div><div class="empty-title">No buses found</div><div class="empty-sub">Try a different date or bus type</div></div>';
+
+    // Bind select seat buttons
+    setTimeout(() => {
+      document.querySelectorAll('[data-select-bus]').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const busId = btn.dataset.selectBus;
+          const busTypeVal = btn.dataset.busType;
+          selectBus(buses.find(b => b.id === busId), busTypeVal);
+        });
+      });
+    }, 100);
+
+    goToStep(2);
+  }
+
+  function renderBusCard(b) {
+    const avail = b.total - b.bookedSeats;
+    const availCls = avail > 10 ? 'many' : avail > 0 ? 'few' : 'sold';
+    const availTxt = avail > 0 ? `${avail} seats available` : 'SOLD OUT';
+    return `
+    <div class="bus-result-card">
+      <div class="brc-header">
+        <div style="font-size:28px;">🚍</div>
+        <div>
+          <div class="brc-operator">${b.op}</div>
+          <div class="brc-bus-id">${b.id} · ${b.type}</div>
+        </div>
+        <div style="margin-left:auto;text-align:right;">
+          <div class="brc-avail-num ${availCls}">${avail > 0 ? avail : '—'}</div>
+          <div class="brc-avail-lbl">${avail > 0 ? 'seats left' : 'SOLD OUT'}</div>
+        </div>
+      </div>
+      <div class="brc-journey">
+        <div class="brc-time">
+          <div class="brc-time-val">${b.dep}</div>
+          <div class="brc-time-city">${state.from.name}</div>
+        </div>
+        <div class="brc-mid">
+          <div class="brc-dur">${b.dur}</div>
+          <div class="brc-line"></div>
+        </div>
+        <div class="brc-time" style="text-align:right;">
+          <div class="brc-time-val">${b.arr}</div>
+          <div class="brc-time-city">${state.to.name}</div>
+        </div>
+      </div>
+      <div class="brc-footer">
+        <div>
+          <div class="brc-avail-num ${availCls}" style="font-size:14px;">${availTxt}</div>
+          <div class="brc-avail-lbl">${b.type}</div>
+        </div>
+        <div style="margin-left:auto;text-align:right;">
+          <div class="brc-fare">₹${b.fare}</div>
+          <div class="brc-avail-lbl">per seat</div>
+        </div>
+        ${avail > 0 ? `<button class="btn btn-primary" style="height:38px;font-size:12px;padding:0 16px;" data-select-bus="${b.id}" data-bus-type="${b.type}"><span class="material-icons-round" style="font-size:15px;">event_seat</span> SELECT</button>` : `<button class="btn" style="height:38px;background:var(--divider);color:var(--text-hint);cursor:not-allowed;padding:0 16px;" disabled>SOLD OUT</button>`}
+      </div>
+    </div>`;
+  }
+
+  function generateMockBuses(from, to) {
+    return [
+      { id:`BUS-${from.substring(0,3).toUpperCase()}-001`, op:`${from} Roadways`, type:'AC Seater', dep:'07:00', arr:'13:30', dur:'6h 30m', fare:550, total:44, bookedSeats:20 },
+      { id:`BUS-${from.substring(0,3).toUpperCase()}-002`, op:'Private Travels', type:'Sleeper', dep:'21:00', arr:'05:00', dur:'8h', fare:750, total:36, bookedSeats:14 },
+    ];
+  }
+
+  // ================================================================
+  //  SEAT SELECTION
+  // ================================================================
+  function selectBus(bus, busTypeVal) {
+    state.selectedBus  = bus;
+    state.selectedSeats = [];
+    const perSeat = bus.fare;
+    document.getElementById('seat-bus-name').textContent = `${bus.op} — ${bus.id}`;
+    document.getElementById('seat-bus-meta').textContent = `${state.from.name} (${bus.dep}) → ${state.to.name} (${bus.arr}) · ${bus.dur}`;
+    document.getElementById('seat-fare').textContent = `₹${perSeat}`;
+    document.getElementById('req-seats').textContent  = state.pax;
+    document.getElementById('seat-total-fare').textContent = '₹0';
+    renderSeatMap(bus);
+    goToStep(3);
+  }
+
+  function renderSeatMap(bus) {
+    const seed = bus.id + state.date;
+    let hash = 0; for (let c of seed) hash = (hash * 31 + c.charCodeAt(0)) & 0xfffff;
+    const rows = 10;
+    let html = '';
+    for (let r = 1; r <= rows; r++) {
+      html += `<div class="seat-row"><span class="seat-num-lbl">${r}</span>`;
+      ['A','B'].forEach(col => {
+        const sh = (hash + r*97 + col.charCodeAt(0) * 11) & 0xff;
+        const st = sh < 70 ? 'booked' : (col==='A' && r<=2 ? 'ladies' : 'available');
+        html += `<div class="seat ${st}" id="seat-${r}${col}" data-id="${r}${col}" data-fare="${bus.fare}" onclick="toggleSeat(this,'${st}')">${r}${col}</div>`;
+      });
+      html += `<div class="seat-aisle"></div>`;
+      ['C','D'].forEach(col => {
+        const sh = (hash + r*89 + col.charCodeAt(0) * 13) & 0xff;
+        const st = sh < 62 ? 'booked' : 'available';
+        html += `<div class="seat ${st}" id="seat-${r}${col}" data-id="${r}${col}" data-fare="${bus.fare}" onclick="toggleSeat(this,'${st}')">${r}${col}</div>`;
+      });
+      html += `</div>`;
+    }
+    document.getElementById('seat-map-grid').innerHTML = html;
+  }
+
+  window.toggleSeat = function(el, origStatus) {
+    if (origStatus === 'booked' || origStatus === 'ladies') return;
+    const id = el.dataset.id;
+    if (el.classList.contains('selected')) {
+      el.classList.remove('selected'); el.classList.add('available');
+      state.selectedSeats = state.selectedSeats.filter(s => s !== id);
+    } else {
+      if (state.selectedSeats.length >= state.pax) { showSnackbar(`Max ${state.pax} seat(s) allowed`); return; }
+      el.classList.remove('available'); el.classList.add('selected');
+      state.selectedSeats.push(id);
+    }
+    const total = state.selectedSeats.length * state.selectedBus.fare;
+    document.getElementById('seat-total-fare').textContent = `₹${total}`;
+    document.getElementById('selected-seats-lbl').innerHTML = state.selectedSeats.length
+      ? `Selected: <strong>${state.selectedSeats.join(', ')}</strong>`
+      : `Select <span id="req-seats">${state.pax}</span> seat(s)`;
+  };
+
+  // ================================================================
+  //  PASSENGER DETAILS
+  // ================================================================
+  function buildPaxForms() {
+    let html = '';
+    for (let i = 1; i <= state.pax; i++) {
+      html += `
+      <div class="pax-form-card">
+        <div class="pax-form-header">PASSENGER ${i}</div>
+        <div class="pax-form-body">
+          <div class="form-group">
+            <label class="form-label">FULL NAME</label>
+            <input class="form-input" id="pax-name-${i}" placeholder="As on government ID" />
+          </div>
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
+            <div class="form-group">
+              <label class="form-label">AGE</label>
+              <input class="form-input" id="pax-age-${i}" type="number" placeholder="Age" min="1" max="110" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">GENDER</label>
+              <div class="gender-row">
+                <button class="gender-opt active" id="g-m-${i}" onclick="setGender(${i},'Male')">♂ Male</button>
+                <button class="gender-opt" id="g-f-${i}" onclick="setGender(${i},'Female')">♀ Female</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }
+    document.getElementById('pax-forms-container').innerHTML = html;
+  }
+
+  window.setGender = function(i, g) {
+    document.getElementById(`g-m-${i}`).classList.toggle('active', g==='Male');
+    document.getElementById(`g-f-${i}`).classList.toggle('active', g==='Female');
+  };
+
+  // ================================================================
+  //  BOOKING CONFIRMATION
+  // ================================================================
+  function generatePNR() { return 'TRK' + Date.now().toString().slice(-7); }
+
+  async function confirmBooking() {
+    const paxList = [];
+    for (let i = 1; i <= state.pax; i++) {
+      const name = document.getElementById(`pax-name-${i}`).value.trim();
+      const age  = document.getElementById(`pax-age-${i}`).value.trim();
+      if (!name || !age) { showSnackbar(`Fill in all details for Passenger ${i}`); return; }
+      const genderM = document.getElementById(`g-m-${i}`);
+      const gender = genderM?.classList.contains('active') ? 'Male' : 'Female';
+      paxList.push({ name, age, gender });
+    }
+    if (!TracerAuth.isLoggedIn()) {
+      showSnackbar('Please sign in to confirm booking');
+      TracerAuth.openLogin();
+      return;
+    }
+    state.passengers = paxList;
+    state.pnr = generatePNR();
+    const totalFare = state.selectedSeats.length * state.selectedBus.fare;
+    try {
+      const paid = await TracerAPI.pay({
+        bus_id: state.selectedBus.id,
+        from_stop: state.from.code || state.from.name,
+        to_stop: state.to.code || state.to.name,
+        fare: totalFare,
+        method: 'upi'
+      });
+      if (paid?.pnr) state.pnr = paid.pnr;
+    } catch (e) {
+      console.warn('Payment API unavailable, saving booking locally:', e.message);
+    }
+    const booking = {
+      pnr: state.pnr, from: state.from.name, to: state.to.name,
+      date: state.date, bus: state.selectedBus.id, operator: state.selectedBus.op,
+      seats: [...state.selectedSeats], passengers: paxList, fare: totalFare,
+      status: 'CONFIRMED', type: state.selectedBus.type, distKm: 0,
+      dep: state.selectedBus.dep, arr: state.selectedBus.arr, dur: state.selectedBus.dur,
+      bookedAt: new Date().toISOString()
+    };
+    TracerAuth.addBooking(booking);
+    if (TracerAuth.isLoggedIn()) TracerAuth.saveRoute({ from: state.from.name, to: state.to.name, type: state.selectedBus.type });
+
+    // Fill confirmation screen
+    document.getElementById('conf-pnr').textContent   = `PNR: ${state.pnr}`;
+    document.getElementById('conf-dep-time').textContent = state.selectedBus.dep;
+    document.getElementById('conf-from').textContent   = state.from.name;
+    document.getElementById('conf-arr-time').textContent = state.selectedBus.arr;
+    document.getElementById('conf-to').textContent     = state.to.name;
+    document.getElementById('conf-dur').textContent    = state.selectedBus.dur;
+    document.getElementById('conf-bus-type').textContent = state.selectedBus.type;
+    document.getElementById('conf-bus').textContent    = `${state.selectedBus.op} · ${state.selectedBus.id}`;
+    document.getElementById('conf-op').textContent     = state.selectedBus.op;
+    document.getElementById('conf-date').textContent   = new Date(state.date).toDateString();
+    document.getElementById('conf-seats').textContent  = state.selectedSeats.join(', ');
+    document.getElementById('conf-pax').textContent    = paxList.map(p => `${p.name} (${p.gender}, ${p.age})`).join(' | ');
+    document.getElementById('conf-total').textContent  = `₹${totalFare}`;
+    goToStep(5);
+  }
+
+  // ================================================================
+  //  STEP NAVIGATION
+  // ================================================================
+  const stepIds = ['step-search','step-results','step-seats','step-passengers','step-confirm'];
+  const stepLabels = ['Search','Buses','Seats','Details','Confirm'];
+  const stepActions = {
+    2: { lbl:'Buses found', val: () => `${(BUS_DB[state.from?.name+'-'+state.to?.name]||[]).length || 2} routes`, nextStep: null },
+    3: { lbl:'Select seats', val: () => `${state.selectedBus?.op}`, btn: 'CONTINUE', action: () => { if(state.selectedSeats.length < state.pax){ showSnackbar(`Select ${state.pax} seat(s)`); return false; } buildPaxForms(); return true; } },
+    4: { lbl:'Review & Pay', val: () => `₹${state.selectedSeats.length * (state.selectedBus?.fare||0)} total`, btn: 'CONFIRM BOOKING', action: () => { confirmBooking(); return false; } },
+  };
+
+  function goToStep(n) {
+    state.step = n;
+    stepIds.forEach((id, i) => {
+      const el = document.getElementById(id);
+      if (el) el.style.display = i === n - 1 ? (id === 'step-seats' ? 'block' : 'block') : 'none';
+    });
+    // Update step bar
+    for (let i = 1; i <= 5; i++) {
+      const dot = document.getElementById(`dot-${i}`);
+      const lbl = document.getElementById(`lbl-${i}`);
+      const line = document.getElementById(`line-${i}`);
+      if (dot) { dot.className = 'step-dot' + (i === n ? ' active' : i < n ? ' done' : ''); }
+      if (lbl) { lbl.className = 'step-label' + (i === n ? ' active' : i < n ? ' done' : ''); }
+      if (line) { line.className = 'step-line' + (i < n ? ' done' : ''); }
+    }
+    const titles = { 1:'Book Tickets', 2:'Available Buses', 3:'Select Seats', 4:'Passenger Details', 5:'Booking Confirmed!' };
+    document.getElementById('page-title').textContent = titles[n] || 'Book Tickets';
+    // Action bar
+    const ab = document.getElementById('action-bar');
+    if ([3,4].includes(n)) {
+      ab.style.display = 'flex';
+      document.getElementById('ab-label').textContent = stepActions[n]?.lbl || '';
+      document.getElementById('ab-val').textContent   = stepActions[n]?.val?.() || '';
+      document.getElementById('next-btn').textContent = (n === 4 ? 'CONFIRM BOOKING' : 'CONTINUE');
+    } else {
+      ab.style.display = 'none';
+    }
+    window.scrollTo(0, 0);
+  }
+
+  // Next button
+  document.getElementById('next-btn').addEventListener('click', () => {
+    const action = stepActions[state.step];
+    if (action?.action) { if (!action.action()) return; }
+    if (state.step < 5) goToStep(state.step + 1);
+  });
+
+  // Load from URL params (from profile saved routes)
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const pf = params.get('from'), pt = params.get('to');
+    if (pf && pt) {
+      state.from = CITIES.find(c => c.name === pf) || { name: pf, code: pf.substring(0,3).toUpperCase(), state: '' };
+      state.to   = CITIES.find(c => c.name === pt) || { name: pt, code: pt.substring(0,3).toUpperCase(), state: '' };
+      renderCityFields();
+      setTimeout(doSearch, 300);
+    }
+  } catch(e) {}
+  </script>
+</body>
+</html>

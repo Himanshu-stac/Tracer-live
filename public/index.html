@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <title>Tracer Live — Real-Time Bus Tracking</title>
+  <meta name="description" content="Track any bus live on a map. Driver and passenger tracking. Local & intercity routes." />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&display=swap" />
+  <link rel="stylesheet" href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" />
+  <link rel="stylesheet" href="style.css" />
+  <style>
+    body { max-width: 100% !important; padding-bottom: 0; }
+    .hero {
+      min-height: 100vh; display: flex; flex-direction: column;
+      background: linear-gradient(160deg, #EFF5EE 0%, #F4FAF5 40%, #EDF2FF 100%);
+      position: relative; overflow: hidden;
+    }
+    [data-theme="dark"] .hero { background: linear-gradient(160deg, #071610, #0D2017, #071020); }
+    .hero-bg-blob {
+      position: absolute; border-radius: 50%; filter: blur(80px); opacity: 0.25; pointer-events: none;
+    }
+    .blob1 { width: 400px; height: 400px; background: #1B6B45; top: -100px; right: -80px; }
+    .blob2 { width: 350px; height: 350px; background: #1565C0; bottom: 80px; left: -80px; }
+    .blob3 { width: 200px; height: 200px; background: #27AE60; top: 50%; right: 10%; }
+    [data-theme="dark"] .blob1 { background: #2ECC71; opacity: 0.12; }
+    [data-theme="dark"] .blob2 { background: #29B6F6; opacity: 0.1; }
+    nav {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 16px 20px; position: relative; z-index: 10;
+    }
+    .nav-brand { display: flex; align-items: center; gap: 10px; }
+    .nav-logo   { font-size: 28px; }
+    .nav-name {
+      font-size: 22px; font-weight: 800; letter-spacing: -0.3px;
+      background: linear-gradient(135deg, #1B6B45, #1565C0);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    [data-theme="dark"] .nav-name { background: linear-gradient(135deg, #2ECC71, #29B6F6); -webkit-background-clip: text; background-clip: text; }
+    .nav-badge {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+      background: #1565C0; color: #fff; padding: 2px 7px; border-radius: 20px;
+      margin-top: 2px;
+    }
+    [data-theme="dark"] .nav-badge { background: #2ECC71; color: #071610; }
+    .nav-actions { display: flex; gap: 8px; align-items: center; }
+    .hero-main {
+      flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+      padding: 20px 20px 40px; text-align: center; position: relative; z-index: 5;
+    }
+    .hero-bus { font-size: 80px; margin-bottom: 8px; animation: float-bus 3s ease-in-out infinite; }
+    @keyframes float-bus { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-12px); } }
+    .hero-title {
+      font-size: clamp(28px, 7vw, 52px); font-weight: 800; line-height: 1.15;
+      letter-spacing: -1px; margin-bottom: 12px; color: var(--text);
+    }
+    .hero-title span {
+      background: linear-gradient(135deg, #1B6B45, #1565C0);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;
+    }
+    [data-theme="dark"] .hero-title span { background: linear-gradient(135deg, #2ECC71, #29B6F6); -webkit-background-clip: text; background-clip: text; }
+    .hero-sub {
+      font-size: clamp(14px, 3vw, 18px); color: var(--text-sec); max-width: 480px;
+      line-height: 1.65; margin-bottom: 28px;
+    }
+    /* Mode toggle */
+    .mode-toggle {
+      display: flex; gap: 0; background: var(--bg2);
+      border: 1px solid var(--divider); border-radius: 30px;
+      padding: 4px; margin-bottom: 24px; box-shadow: var(--shadow);
+    }
+    .mode-toggle-btn {
+      padding: 8px 20px; border: none; border-radius: 26px;
+      font-family: 'Outfit', sans-serif; font-size: 13px; font-weight: 600;
+      cursor: pointer; background: transparent; color: var(--text-sec);
+      display: flex; align-items: center; gap: 6px; transition: all 0.2s;
+    }
+    .mode-toggle-btn.active {
+      background: linear-gradient(135deg, #1565C0, #1976D2);
+      color: #fff; box-shadow: 0 2px 10px rgba(21,101,192,0.3);
+    }
+    [data-theme="dark"] .mode-toggle-btn.active { background: linear-gradient(135deg, #27AE60, #2ECC71); color: #071610; }
+    /* CTA buttons */
+    .cta-row { display: flex; gap: 12px; flex-wrap: wrap; justify-content: center; margin-bottom: 16px; }
+    .cta-btn {
+      display: flex; align-items: center; gap: 10px;
+      padding: 14px 28px; border-radius: 30px; border: none;
+      font-family: 'Outfit', sans-serif; font-size: 15px; font-weight: 700;
+      cursor: pointer; transition: all 0.25s; letter-spacing: 0.03em;
+      text-decoration: none;
+    }
+    .cta-driver {
+      background: linear-gradient(135deg, #1B6B45, #27AE60);
+      color: #fff; box-shadow: 0 6px 24px rgba(27,107,69,0.3);
+    }
+    .cta-driver:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(27,107,69,0.4); }
+    .cta-passenger {
+      background: linear-gradient(135deg, #1565C0, #1976D2);
+      color: #fff; box-shadow: 0 6px 24px rgba(21,101,192,0.3);
+    }
+    .cta-passenger:hover { transform: translateY(-2px); box-shadow: 0 10px 32px rgba(21,101,192,0.4); }
+    /* Active buses section */
+    .active-section {
+      padding: 24px 16px 40px; position: relative; z-index: 5;
+      max-width: 600px; margin: 0 auto; width: 100%;
+    }
+    .active-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .active-title { font-size: 14px; font-weight: 700; color: var(--text); }
+    .buses-card {
+      background: var(--bg2); border: 1px solid var(--divider);
+      border-radius: var(--radius); box-shadow: var(--shadow); overflow: hidden;
+    }
+    /* Features */
+    .features { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-top: 24px; }
+    .feature-card {
+      background: var(--bg2); border: 1px solid var(--divider); border-radius: var(--radius-sm);
+      padding: 16px; text-align: center; box-shadow: var(--shadow);
+    }
+    .feature-icon { font-size: 32px; margin-bottom: 8px; }
+    .feature-name { font-size: 13px; font-weight: 700; color: var(--text); margin-bottom: 4px; }
+    .feature-desc { font-size: 11px; color: var(--text-sec); line-height: 1.5; }
+    /* Footer */
+    footer {
+      text-align: center; padding: 20px; font-size: 12px; color: var(--text-hint);
+      border-top: 1px solid var(--divider);
+    }
+  </style>
+</head>
+<body>
+  <!-- Splash -->
+  <div class="splash" id="splash">
+    <div class="splash-logo">🚌</div>
+    <div class="splash-brand">Tracer Live</div>
+    <div class="splash-sub">Real-Time Bus Tracking</div>
+  </div>
+
+  <div class="hero" id="hero-page">
+    <!-- BG blobs -->
+    <div class="hero-bg-blob blob1"></div>
+    <div class="hero-bg-blob blob2"></div>
+    <div class="hero-bg-blob blob3"></div>
+
+    <!-- Nav -->
+    <nav>
+      <div class="nav-brand">
+        <span class="nav-logo">🚌</span>
+        <div>
+          <div class="nav-name">Tracer Live</div>
+          <div class="nav-badge">GPS POWERED</div>
+        </div>
+      </div>
+      <div class="nav-actions">
+        <a href="tickets.html" class="cta-btn" style="padding:8px 16px;border-radius:20px;background:linear-gradient(135deg,#1565C0,#1976D2);color:#fff;font-size:12px;gap:5px;font-family:Outfit,sans-serif;font-weight:700;text-decoration:none;display:flex;align-items:center;">
+          <span class="material-icons-round" style="font-size:15px;">confirmation_number</span> Tickets
+        </a>
+        <button class="auth-avatar-btn" data-auth-avatar id="auth-btn">?</button>
+        <button class="icon-btn" id="theme-btn" title="Toggle theme">
+          <span class="material-icons-round" id="theme-icon">dark_mode</span>
+        </button>
+      </div>
+    </nav>
+
+    <!-- Hero -->
+    <div class="hero-main">
+      <div class="hero-bus">🚌</div>
+      <h1 class="hero-title">Track Any Bus<br /><span>Live on Map</span></h1>
+      <p class="hero-sub">
+        Real-time GPS bus tracking for drivers and passengers.
+        Know exactly where your bus is — right now.
+      </p>
+
+      <!-- Mode toggle -->
+      <div class="mode-toggle" role="tablist">
+        <button class="mode-toggle-btn active" id="mode-local" role="tab">
+          🏙 Local Bus
+        </button>
+        <button class="mode-toggle-btn" id="mode-intercity" role="tab">
+          🛣 Intercity
+        </button>
+      </div>
+
+      <!-- CTA -->
+      <div class="cta-row">
+        <a class="cta-btn cta-driver" href="driver.html">
+          <span class="material-icons-round">directions_bus</span> I'm a Driver
+        </a>
+        <a class="cta-btn cta-passenger" href="passenger.html">
+          <span class="material-icons-round">gps_fixed</span> Track a Bus
+        </a>
+        <a class="cta-btn" href="tickets.html" style="background:linear-gradient(135deg,#6A1B9A,#8E24AA);color:#fff;box-shadow:0 6px 24px rgba(106,27,154,0.3);">
+          <span class="material-icons-round">confirmation_number</span> Book Ticket
+        </a>
+      </div>
+      <p style="font-size:12px;color:var(--text-hint);margin-bottom:4px;">
+        🟢 Demo mode active — no Firebase needed to preview
+      </p>
+    </div>
+
+    <!-- Active buses -->
+    <div class="active-section">
+      <div class="active-header">
+        <div class="active-title">🟢 Active Buses Now</div>
+        <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+      </div>
+      <div class="buses-card" id="active-buses-list">
+        <div style="padding:24px;text-align:center;"><div class="spinner"></div></div>
+      </div>
+
+      <!-- Features -->
+      <div class="features" id="features-section">
+        <div class="feature-card">
+          <div class="feature-icon">📍</div>
+          <div class="feature-name">Real-Time GPS</div>
+          <div class="feature-desc">Location updates every 3–5 seconds</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🗺</div>
+          <div class="feature-name">Live Map</div>
+          <div class="feature-desc">Smooth animated marker on Leaflet map</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🔒</div>
+          <div class="feature-name">Driver Auth</div>
+          <div class="feature-desc">Secure login with Firebase Auth</div>
+        </div>
+        <div class="feature-card">
+          <div class="feature-icon">🚌</div>
+          <div class="feature-name">Two Modes</div>
+          <div class="feature-desc">Local city & Intercity / State buses</div>
+        </div>
+      </div>
+    </div>
+
+    <footer>© 2026 Tracer Live · GPS-Powered Bus Tracking</footer>
+  </div>
+
+  <div class="snackbar" id="snackbar"></div>
+
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js"></script>
+<script src="api.js"></script>
+  <script src="shared.js"></script>
+  <script src="auth.js"></script>
+  <script>
+    // Init theme + auth
+    initTheme();
+    document.getElementById('theme-btn').addEventListener('click', toggleTheme);
+    TracerAuth.init();
+    document.getElementById('auth-btn').addEventListener('click', () => {
+      if (TracerAuth.isLoggedIn()) TracerAuth.openProfile();
+      else TracerAuth.openLogin();
+    });
+
+    // Splash
+    setTimeout(() => document.getElementById('splash').classList.add('hidden'), 1800);
+
+    // Mode toggle
+    let currentMode = 'local';
+    document.getElementById('mode-local').addEventListener('click', () => setMode('local'));
+    document.getElementById('mode-intercity').addEventListener('click', () => setMode('intercity'));
+
+    function setMode(m) {
+      currentMode = m;
+      document.getElementById('mode-local').classList.toggle('active', m === 'local');
+      document.getElementById('mode-intercity').classList.toggle('active', m === 'intercity');
+      try { sessionStorage.setItem('tracer-bus-mode', m); } catch(e){}
+      renderActiveBuses(m);
+    }
+
+    // Render active buses list
+    function renderActiveBuses(mode) {
+      const el = document.getElementById('active-buses-list');
+      const buses = Object.entries(DEMO_BUSES).filter(([,b]) => b.info.type === mode && b.status === 'active');
+      if (!buses.length) {
+        el.innerHTML = `<div class="empty-state"><div class="empty-icon">🚏</div><div class="empty-title">No active ${mode} buses</div><div class="empty-sub">When a driver starts tracking, their bus appears here.</div></div>`;
+        return;
+      }
+      el.innerHTML = buses.map(([id, b]) => `
+        <div class="bus-card" onclick="goToPassenger('${id}')">
+          <div class="bus-card-icon">${b.info.type === 'local' ? '🚌' : '🚍'}</div>
+          <div class="bus-card-main">
+            <div class="bus-card-num">${b.info.busNumber}</div>
+            <div class="bus-card-route">${b.info.from} → ${b.info.to}</div>
+            <div class="bus-card-meta">
+              ${busTypeBadge(b.info.type)}
+              <div class="live-badge"><span class="live-dot"></span>LIVE</div>
+            </div>
+          </div>
+          <div class="bus-card-right">
+            <div class="bus-card-speed">${Math.round(b.location.speed)}</div>
+            <div class="bus-card-speed-lbl">km/h</div>
+            <div class="bus-card-time">${timeAgo(b.location.timestamp)}</div>
+          </div>
+        </div>`).join('');
+    }
+
+    function goToPassenger(busId) {
+      try { sessionStorage.setItem('tracer-track-bus', busId); } catch(e){}
+      window.location.href = 'passenger.html';
+    }
+
+    // Initial render
+    renderActiveBuses('local');
+
+    // Simulate live updates on landing page
+    setInterval(() => {
+      Object.keys(DEMO_BUSES).forEach(id => {
+        const b = DEMO_BUSES[id];
+        b.location = simulateDemoMovement(b.location, b.location.heading);
+      });
+      renderActiveBuses(currentMode);
+    }, 4000);
+  </script>
+</body>
+</html>
